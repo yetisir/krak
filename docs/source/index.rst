@@ -10,7 +10,7 @@ Welcome to Krak's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   overview.rst
 
 Indices and tables
 ==================

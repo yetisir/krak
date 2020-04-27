@@ -1,2 +1,18 @@
-# krak
-Geo-Data Collection and Management Framework
+Krak Data Management Framework
+===============================================================================
+
+| Project description
+
+.. contents:: :local:
+
+
+Subheading #1
+-------------------------------------------------------------------------------
+
+| Text
+
+
+Subheading #2
+-------------------------------------------------------------------------------
+
+| Text

@@ -1,5 +1,4 @@
 import argparse
-import pathlib
 from abc import ABC, abstractmethod
 
 from . import utils

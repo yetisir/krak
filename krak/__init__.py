@@ -1,13 +1,14 @@
 import subprocess
-import pathlib
+import webbrowser
 
 import pytest
-import sphinx
+from sphinx.ext import apidoc
+from sphinx.cmd import build
 
 from . import common, utils
 
 
-__description__ = 'Geo-Data Collection and Management Framework'
+__description__ = 'Data Collection and Management Framework'
 __url__ = 'https://gihub.com/yetisir/krak'
 __version__ = '0.0.1'
 __author__ = ['M. Yetisir', 'P. Matlashewski']
@@ -53,17 +54,25 @@ class DocumentationEntryPoint(common.EntryPoint):
     description = 'Krak Documentation Builder'
 
     def run(self, options):
-        # create_output_directory 
+        # create_output_directory
 
         module_path = utils.module_root()
         docs_path = module_path.parent / 'docs'
         docs_api_path = docs_path / 'api'
-
-        sphinx.apidoc.main([
+        docs_source_path = docs_path / 'source'
+        docs_build_path = docs_path / 'build'
+        docs_index_path = docs_build_path / 'index.html'
+        apidoc.main([
             module_path.as_posix(), '-o', docs_api_path.as_posix(), '--force',
             '--separate'])
+        build.main([
+            '-b', 'html', docs_source_path.as_posix(),
+            docs_build_path.as_posix()])
+
+        webbrowser.open(docs_index_path.as_posix())
         # run apidoc
         # build sphinx
         # open docs
+
     def build_parser(self, parser):
         pass

@@ -6,7 +6,11 @@
 .vscode/
 
 # Pytest
-tests/test-reports
+tests/test-reports/
 
 # Vim
 *.swp
+
+# Sphinx
+docs/api/
+docs/build/
