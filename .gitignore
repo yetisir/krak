@@ -12,5 +12,5 @@ tests/test-reports/
 *.swp
 
 # Sphinx
-docs/api/
+docs/source/api/
 docs/build/

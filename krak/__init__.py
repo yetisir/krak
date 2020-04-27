@@ -58,8 +58,8 @@ class DocumentationEntryPoint(common.EntryPoint):
 
         module_path = utils.module_root()
         docs_path = module_path.parent / 'docs'
-        docs_api_path = docs_path / 'api'
         docs_source_path = docs_path / 'source'
+        docs_api_path = docs_source_path / 'api'
         docs_build_path = docs_path / 'build'
         docs_index_path = docs_build_path / 'index.html'
         apidoc.main([
