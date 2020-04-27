@@ -1,5 +1,6 @@
 import subprocess
 import webbrowser
+import shutil
 
 import pytest
 from sphinx.ext import apidoc
@@ -54,25 +55,29 @@ class DocumentationEntryPoint(common.EntryPoint):
     description = 'Krak Documentation Builder'
 
     def run(self, options):
-        # create_output_directory
-
+         # define paths
         module_path = utils.module_root()
         docs_path = module_path.parent / 'docs'
         docs_source_path = docs_path / 'source'
         docs_api_path = docs_source_path / 'api'
         docs_build_path = docs_path / 'build'
         docs_index_path = docs_build_path / 'index.html'
+
+        # clear previously generated files
+        try:
+            shutil.rmtree(docs_api_path)
+        except FileNotFoundError:
+            pass
+
+        # build documentation
         apidoc.main([
             module_path.as_posix(), '-o', docs_api_path.as_posix(), '--force',
-            '--separate'])
+            '--separate', '--implicit-namespaces'])
         build.main([
             '-b', 'html', docs_source_path.as_posix(),
             docs_build_path.as_posix()])
 
         webbrowser.open(docs_index_path.as_posix())
-        # run apidoc
-        # build sphinx
-        # open docs
 
     def build_parser(self, parser):
         pass
