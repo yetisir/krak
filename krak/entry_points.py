@@ -7,7 +7,7 @@ from sphinx.ext import apidoc
 from sphinx.cmd import build
 
 from . import common, utils
-from .server.borehole_database import tables
+from .server.rest_api import tables
 
 
 class ServerEntryPoint(common.EntryPoint):
@@ -23,7 +23,8 @@ class ServerEntryPoint(common.EntryPoint):
     def run(self, options):
         docker_compose_file_path = utils.module_root() / 'server'
 
-        tables.generate_sql()
+        tables.generate_sql(
+            docker_compose_file_path / 'borehole_database' / 'tables.sql')
 
         try:
             for action in self.actions.get(options.action):
