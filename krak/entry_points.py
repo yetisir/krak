@@ -23,6 +23,7 @@ class ServerEntryPoint(common.EntryPoint):
     def run(self, options):
         docker_compose_file_path = utils.module_root() / 'server'
 
+        tables.initialize()
         tables.generate_sql(
             docker_compose_file_path / 'borehole_database' / 'tables.sql')
 

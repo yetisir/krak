@@ -1,15 +1,10 @@
-import sqlalchemy as sql
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
+from . import sql, ma
 
-Base = declarative_base()
 
-
-class Borehole(Base):
-    __tablename__ = 'borehole'
-
+class Borehole(sql.Model):
     borehole_id = sql.Column(sql.Integer(), primary_key=True)
     name = sql.Column(sql.String(64), nullable=False)
     x = sql.Column(sql.Float(), nullable=False)
@@ -17,9 +12,7 @@ class Borehole(Base):
     z = sql.Column(sql.Float(), nullable=False)
 
 
-class Survey(Base):
-    __tablename__ = 'survey'
-
+class Survey(sql.Model):
     survey_id = sql.Column(sql.Integer(), primary_key=True)
     borehole_id = sql.Column(
             sql.Integer(), sql.ForeignKey('borehole.borehole_id'))
@@ -29,16 +22,12 @@ class Survey(Base):
     dip = sql.Column(sql.Float(), nullable=False)
 
 
-class Lithology(Base):
-    __tablename__ = 'lithology'
-
+class Lithology(sql.Model):
     lithology_id = sql.Column(sql.Integer(), primary_key=True)
     name = sql.Column(sql.String(64), nullable=False)
 
 
-class Lithology_log(Base):
-    __tablename__ = 'lithology_log'
-
+class LithologyLog(sql.Model):
     borehole_id = sql.Column(
         sql.Integer(), sql.ForeignKey('borehole.borehole_id'),
         primary_key=True)
@@ -50,9 +39,7 @@ class Lithology_log(Base):
     comments = sql.Column(sql.String(1024))
 
 
-class CorePhotoLog(Base):
-    __tablename__ = 'photo_log'
-
+class CorePhotoLog(sql.Model):
     borehole_id = sql.Column(
         sql.Integer(), sql.ForeignKey('borehole.borehole_id'),
         primary_key=True)
@@ -65,10 +52,29 @@ class CorePhotoLog(Base):
 def generate_sql(sql_file_path):
     sql_queries = []
 
-    for table in Base.metadata.tables.values():
+    for table in sql.Modl.metadata.tables.values():
         table_sql = CreateTable(table).compile(dialect=postgresql.dialect())
         sql_queries.append(str(table_sql).strip() + ';')
 
     with open(sql_file_path, 'w') as sql_file:
         sql_file.write('-- Automatically generated queries from tables.py\n')
         sql_file.write('\n\n'.join(sql_queries))
+
+
+def setup_schema():
+    for cls in sql.Model._decl_class_registry.values():
+        if not __hasattr__(cls, '__tablename__'):
+            continue
+
+        class Meta:
+            model = cls
+            sqla_session = sql.session
+
+        schema_class_name = f'{cls.__name__}Schema'
+        schema_class = type(schema_class_name, (ma.SQLAlchemyAutoSchema, ), {'Meta': Meta})
+
+        setattr(cls, '__marshmallow__', schema_class)
+
+
+def initialize():
+    sqlalchemy.event.listen(mapper, 'after_configured', setup_schema)
