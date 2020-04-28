@@ -4,6 +4,7 @@
 
 .. include:: ../../README.rst
 
+.. openapi:: ../../krak/server/rest_api/swagger.yml
 
 Indices and tables
 --------------------------------------------------------------------------------
