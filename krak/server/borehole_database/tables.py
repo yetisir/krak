@@ -9,6 +9,16 @@ from sqlalchemy.schema import CreateTable
 Base = declarative_base()
 
 
+class Boreholes(Base):
+    __tablename__ = 'boreholes'
+
+    borehole_id = sql.Column(sql.Integer(), primary_key=True)
+    name = sql.Column(sql.String(64), nullable=False)
+    x = sql.Column(sql.Float(), nullable=False)
+    y = sql.Column(sql.Float(), nullable=False)
+    z = sql.Column(sql.Float(), nullable=False)
+
+
 class Surveys(Base):
     __tablename__ = 'surveys'
 
@@ -21,14 +31,11 @@ class Surveys(Base):
     dip = sql.Column(sql.Float(), nullable=False)
 
 
-class Boreholes(Base):
-    __tablename__ = 'boreholes'
+class Lithologies(Base):
+    __tablename__ = 'lithologies'
 
-    borehole_id = sql.Column(sql.Integer(), primary_key=True)
+    lithology_id = sql.Column(sql.Integer(), primary_key=True)
     name = sql.Column(sql.String(64), nullable=False)
-    x = sql.Column(sql.Float(), nullable=False)
-    y = sql.Column(sql.Float(), nullable=False)
-    z = sql.Column(sql.Float(), nullable=False)
 
 
 class Lithology_logs(Base):
@@ -39,19 +46,9 @@ class Lithology_logs(Base):
         primary_key=True)
     depth_from = sql.Column(sql.Float(), primary_key=True)
     depth_to = sql.Column(sql.Float(), nullable=False)
-    lithology_id = sql.Column(sql.Float(), nullable=False)
-    comments = sql.Column(sql.String(1024))
-
-
-class PhotoLogs(Base):
-    __tablename__ = 'photo_logs'
-
-    borehole_id = sql.Column(
-        sql.Integer(), sql.ForeignKey('boreholes.borehole_id'),
-        primary_key=True)
-    depth_from = sql.Column(sql.Float(), primary_key=True)
-    depth_to = sql.Column(sql.Float(), nullable=False)
-    photo_id = sql.Column(sql.Float(), nullable=False)
+    lithology_id = sql.Column(
+            sql.Float(), sql.ForeignKey('lithologies.lithology_id'),
+            nullable=False)
     comments = sql.Column(sql.String(1024))
 
 
@@ -62,11 +59,17 @@ class Photos(Base):
     path = sql.Column(sql.String(1024), nullable=False)
 
 
-class Lithologies(Base):
-    __tablename__ = 'lithologies'
+class PhotoLogs(Base):
+    __tablename__ = 'photo_logs'
 
-    lithology_id = sql.Column(sql.Integer(), primary_key=True)
-    name = sql.Column(sql.String(64), nullable=False)
+    borehole_id = sql.Column(
+        sql.Integer(), sql.ForeignKey('boreholes.borehole_id'),
+        primary_key=True)
+    depth_from = sql.Column(sql.Float(), primary_key=True)
+    depth_to = sql.Column(sql.Float(), nullable=False)
+    photo_id = sql.Column(
+            sql.Float(), sql.ForeignKey('photos.photo_id'), nullable=False)
+    comments = sql.Column(sql.String(1024))
 
 
 def generate_sql():
