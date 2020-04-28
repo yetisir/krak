@@ -1,7 +1,7 @@
 import argparse
 from abc import ABC, abstractmethod
 
-from . import utils
+from krak import utils
 
 
 class EntryPoint(ABC):

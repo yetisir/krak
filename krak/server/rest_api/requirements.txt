@@ -1,0 +1,8 @@
+connexion[swagger-ui]
+flask
+flask-sqlalchemy
+flask-marshmallow
+marshmallow
+marshmallow-sqlalchemy
+sqlalchemy
+

@@ -1,4 +1,4 @@
-from .client import *  # noqa
+from krak.client import *  # noqa
 
 __description__ = 'Data Collection and Management Framework'
 __url__ = 'https://gihub.com/yetisir/krak'

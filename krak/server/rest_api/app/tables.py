@@ -3,7 +3,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.orm import mapper
 
-from config import sql, ma
+from .config import sql, ma
 
 
 class Borehole(sql.Model):

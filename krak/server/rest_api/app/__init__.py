@@ -1,4 +1,5 @@
 import pathlib
+import os
 
 import connexion
 from flask_sqlalchemy import SQLAlchemy
@@ -8,10 +9,15 @@ base_dir = pathlib.Path(__file__).parent
 
 connex_app = connexion.App(__name__, specification_dir=base_dir.as_posix())
 
+db_user = os.environ['POSTGRES_USER']
+db_password = os.environ['POSTGRES_PASSWORD']
+db_port = os.environ['POSTGRES_PORT']
+db_name = os.environ['POSTGRES_DB']
+db_uri = f'postgres://{db_user}:{db_password}@0.0.0.0:{db_port}/{db_name}'
+
 app = connex_app.app
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_ECHO'] = True
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    'postgres://admin:admin@10.0.0.223:5423/borehole_database')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 sql = SQLAlchemy(app)

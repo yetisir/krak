@@ -12,6 +12,20 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: borehole_database
     restart: always
+
+  rest_api:
+    build: ./rest_api
+    ports:
+      - 5001:5001
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: borehole_database
+      POSTGRES_PORT: 5432
+    restart: always
+    depends_on:
+        - borehole_database
+
 volumes:
   borehole_database:
     driver: local
