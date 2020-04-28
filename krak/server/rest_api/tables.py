@@ -54,7 +54,7 @@ class CorePhotoLog(sql.Model):
 def generate_sql(sql_file_path):
     sql_queries = []
 
-    for table in sql.Modl.metadata.tables.values():
+    for table in sql.Model.metadata.tables.values():
         table_sql = CreateTable(table).compile(dialect=postgresql.dialect())
         sql_queries.append(str(table_sql).strip() + ';')
 
