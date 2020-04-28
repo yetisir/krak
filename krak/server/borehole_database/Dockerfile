@@ -2,5 +2,5 @@ FROM postgres
 
 ENV POSTGRES_DB borehole_database
 
-COPY . /init
+COPY tables.sql /docker-entrypoint-initdb.d/
 

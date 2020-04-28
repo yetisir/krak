@@ -79,7 +79,7 @@ def generate_sql():
     sql_file_path = pathlib.Path(__file__).with_suffix('.sql')
     
     with open(sql_file_path, 'w') as sql_file:
-        sql_file.write('-- Automatically generated queries from tables.py')
-        sql_file.write('\n'.join(sql_queries))
+        sql_file.write('-- Automatically generated queries from tables.py\n')
+        sql_file.write(''.join(sql_queries))
 
 
