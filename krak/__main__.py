@@ -1,6 +1,6 @@
 import argparse
 
-from . import utils, entry_points
+from . import utils, entrypoints
 
 
 @utils.cli_args
@@ -12,10 +12,10 @@ def main(args=None):
     subparsers.required = True
 
     # get list of entry_points
-    all_entry_points = entry_points.initialize()
+    entry_points = entrypoints.initialize()
 
     # add a subparser for each entry_point
-    for entry_point in all_entry_points.values():
+    for entry_point in entry_points.values():
         subparser = subparsers.add_parser(entry_point.name)
         entry_point.build_parser(subparser)
 
@@ -23,7 +23,7 @@ def main(args=None):
     parameters = parser.parse_args(args)
 
     # run the specified entry point
-    entry_point = all_entry_points.get(parameters.entry_point)
+    entry_point = entry_points.get(parameters.entry_point)
     entry_point.run(parameters)
 
 
