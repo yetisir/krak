@@ -31,7 +31,9 @@ class ServerEntryPoint(common.EntryPoint):
             )
 
     def build_parser(self, parser):
-        pass
+        parser.add_argument(
+            'action', default='resume', const='resume',
+            choices=['resume', 'new', 'stop'])
 
 
 class TestEntryPoint(common.EntryPoint):
