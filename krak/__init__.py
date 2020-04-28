@@ -7,7 +7,7 @@ from sphinx.ext import apidoc
 from sphinx.cmd import build
 
 from . import common, utils
-
+from .server.borehole_database import tables
 
 __description__ = 'Data Collection and Management Framework'
 __url__ = 'https://gihub.com/yetisir/krak'
@@ -23,6 +23,9 @@ class ServerEntryPoint(common.EntryPoint):
 
     def run(self, options):
         docker_compose_file_path = utils.module_root() / 'server'
+
+        tables.generate_sql()
+
         try:
             subprocess.run(
                 ['docker-compose', 'up'],
@@ -55,7 +58,7 @@ class DocumentationEntryPoint(common.EntryPoint):
     description = 'Krak Documentation Builder'
 
     def run(self, options):
-         # define paths
+        # define paths
         module_path = utils.module_root()
         docs_path = module_path.parent / 'docs'
         docs_source_path = docs_path / 'source'
