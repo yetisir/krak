@@ -1,7 +1,6 @@
 import argparse
 
-from .common import EntryPoint
-from . import utils
+from . import utils, entry_points
 
 
 @utils.cli_args
@@ -13,14 +12,10 @@ def main(args=None):
     subparsers.required = True
 
     # get list of entry_points
-    entry_points = [cls() for cls in EntryPoint.__subclasses__()]
-
-    # map entry point name to entry point object for easier access
-    entry_point_map = {
-            entry_point.name: entry_point for entry_point in entry_points}
+    all_entry_points = entry_points.initialize()
 
     # add a subparser for each entry_point
-    for entry_point in entry_points:
+    for entry_point in all_entry_points.values():
         subparser = subparsers.add_parser(entry_point.name)
         entry_point.build_parser(subparser)
 
@@ -28,7 +23,7 @@ def main(args=None):
     parameters = parser.parse_args(args)
 
     # run the specified entry point
-    entry_point = entry_point_map.get(parameters.entry_point)
+    entry_point = all_entry_points.get(parameters.entry_point)
     entry_point.run(parameters)
 
 

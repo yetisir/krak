@@ -75,11 +75,9 @@ def generate_sql():
     for table in Base.metadata.tables.values():
         sql_queries.append(
             str(CreateTable(table).compile(dialect=postgresql.dialect())))
-   
+
     sql_file_path = pathlib.Path(__file__).with_suffix('.sql')
-    
+
     with open(sql_file_path, 'w') as sql_file:
         sql_file.write('-- Automatically generated queries from tables.py\n')
         sql_file.write(''.join(sql_queries))
-
-
