@@ -10,6 +10,18 @@ from . import common, utils
 from .server.rest_api import tables
 
 
+class BuildEntryPoint(common.EntryPoint):
+    name = 'build'
+    description = 'Krak Server Build Tool'
+
+    def run(self)
+        tables.generate_sql(
+            docker_compose_file_path / 'borehole_database' / 'tables.sql')
+
+    def build_parser(self, parser):
+        pass
+
+
 class ServerEntryPoint(common.EntryPoint):
     name = 'server'
     description = 'Krak Server Orchestrator'
@@ -22,10 +34,6 @@ class ServerEntryPoint(common.EntryPoint):
 
     def run(self, options):
         docker_compose_file_path = utils.module_root() / 'server'
-
-        tables.initialize()
-        tables.generate_sql(
-            docker_compose_file_path / 'borehole_database' / 'tables.sql')
 
         try:
             for action in self.actions.get(options.action):
