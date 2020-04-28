@@ -12,39 +12,42 @@ basePath: /api
 
 # Paths supported by the server application
 paths:
-  /people:
+  /borhehole:
     get:
-      operationId: people.read_all
+      operationId: boreholes.read_all
       tags:
-        - People
-      summary: Read the entire set of people, sorted by last name
-      description: Read the entire set of people, sorted by last name
+        - Boreholes
+      summary: Read all boreholes in db, sorted by id
+      description: Read all boreholes in db, sorted by id
       responses:
         200:
-          description: Successfully read people set operation
+          description: Successfully read boreholes
           schema:
             type: array
             items:
               properties:
-                person_id:
+                borehole_id:
+                  type: integer
+                  description: Id of the borehole
+                name:
                   type: string
-                  description: Id of the person
-                fname:
-                  type: string
-                  description: First name of the person
-                lname:
-                  type: string
-                  description: Last name of the person
-                timestamp:
-                  type: string
-                  description: Creation/Update timestamp of the person
+                  description: Name of the borehole
+                x:
+                  type: float
+                  description: x position of the collar
+                y:
+                  type: float
+                  description: Y position of the collar
+                z:
+                  type: float
+                  description: Z posisiont of the collar
 
     post:
-      operationId: people.create
+      operationId: boreholes.create
       tags:
-        - People
-      summary: Create a person
-      description: Create a new person
+        - Boreholes
+      summary: Create a borehole
+      description: Create a new borehole
       parameters:
         - name: person
           in: body
@@ -166,3 +169,5 @@ paths:
         200:
           description: Successfully deleted a person
 
+components:
+  schemas
