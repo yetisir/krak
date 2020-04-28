@@ -1,5 +1,7 @@
 from flask import make_response, abort
-from . import sql, tables
+
+from .config import sql
+from . import tables
 
 
 def read_all():

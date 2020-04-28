@@ -1,173 +1,142 @@
-swagger: "2.0"
+openapi: 3.0.0
 info:
-  description: This is the swagger file that goes with our server code
-  version: "1.0.0"
-  title: Swagger Rest Article
-consumes:
-  - application/json
-produces:
-  - application/json
-
-basePath: /api
-
-# Paths supported by the server application
+  description: Krak REST API
+  version: 0.0.1
+  title: Krak REST API
 paths:
-  /borhehole:
+  /borehole:
     get:
-      operationId: boreholes.read_all
-      tags:
-        - Boreholes
+      operationId: endpoints.borehole.read_all
       summary: Read all boreholes in db, sorted by id
       description: Read all boreholes in db, sorted by id
+      tags:
+        - Borehole
       responses:
-        200:
+        "200":
           description: Successfully read boreholes
-          schema:
-            type: array
-            items:
-              properties:
-                borehole_id:
-                  type: integer
-                  description: Id of the borehole
-                name:
-                  type: string
-                  description: Name of the borehole
-                x:
-                  type: float
-                  description: x position of the collar
-                y:
-                  type: float
-                  description: Y position of the collar
-                z:
-                  type: float
-                  description: Z posisiont of the collar
-
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/borehole_output"
     post:
-      operationId: boreholes.create
-      tags:
-        - Boreholes
-      summary: Create a borehole
+      operationId: endpoints.borehole.create
+      summary: Create a new borehole
       description: Create a new borehole
-      parameters:
-        - name: person
-          in: body
-          description: Person to create
-          required: True
-          schema:
-            type: object
-            properties:
-              fname:
-                type: string
-                description: First name of person to create
-              lname:
-                type: string
-                description: Last name of person to create
+      tags:
+        - Borehole
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/borehole_input"
+        description: Borehole to create
+        required: true
       responses:
-        201:
-          description: Successfully created person
-          schema:
-            properties:
-              person_id:
-                type: string
-                description: Id of the person
-              fname:
-                type: string
-                description: First name of the person
-              lname:
-                type: string
-                description: Last name of the person
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the person record
-
-  /people/{person_id}:
+        "201":
+          description: Successfully created borehole
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/borehole_output"
+  /borehole/{borehole_id}:
     get:
-      operationId: people.read_one
+      operationId: endpoints.borehole.read_one
+      summary: Read one borehole
+      description: Read one borehole
       tags:
-        - People
-      summary: Read one person
-      description: Read one person
+        - Borehole
       parameters:
-        - name: person_id
+        - name: borehole_id
           in: path
-          description: Id of the person to get
-          type: integer
-          required: True
-      responses:
-        200:
-          description: Successfully read person from people data operation
-          schema:
-            type: object
-            properties:
-              person_id:
-                type: string
-                description: Id of the person
-              fname:
-                type: string
-                description: First name of the person
-              lname:
-                type: string
-                description: Last name of the person
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the person record
-
-    put:
-      operationId: people.update
-      tags:
-        - People
-      summary: Update a person
-      description: Update a person
-      parameters:
-        - name: person_id
-          in: path
-          description: Id the person to update
-          type: integer
-          required: True
-        - name: person
-          in: body
-          schema:
-            type: object
-            properties:
-              fname:
-                type: string
-                description: First name of the person
-              lname:
-                type: string
-                description: Last name of the person
-      responses:
-        200:
-          description: Successfully updated person
-          schema:
-            properties:
-              person_id:
-                type: string
-                description: Id of the person in the database
-              fname:
-                type: string
-                description: First name of the person
-              lname:
-                type: string
-                description: Last name of the person
-              timestamp:
-                type: string
-                description: Creation/Update timestamp of the person record
-
-    delete:
-      operationId: people.delete
-      tags:
-        - People
-      summary: Delete a person from the people list
-      description: Delete a person
-      parameters:
-        - name: person_id
-          in: path
-          type: integer
-          description: Id of the person to delete
+          description: Id of the borehole to get
           required: true
+          schema:
+            type: integer
       responses:
-        200:
-          description: Successfully deleted a person
+        "200":
+          description: Successfully read borehole from borehole data operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/borehole_output"
+    put:
+      operationId: endpoints.borehole.update
+      tags:
+        - Borehole
+      summary: Update a borehole
+      description: Update a borehole
+      parameters:
+        - name: borehole_id
+          in: path
+          description: Id of the borehole to update
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/borehole_input"
+      responses:
+        "200":
+          description: Successfully updated borehole
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/borehole_output"
+    delete:
+      operationId: endpoints.borehole.delete
+      summary: Delete a borehole
+      description: Delete a borehole
+      tags:
+        - Borehole
+      parameters:
+        - name: borehole_id
+          in: path
+          description: Id of the borehole to delete
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Successfully deleted borehole
+servers:
+  - url: /api
 
 components:
-  schemas
+  schemas:
+    borehole_input:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the borehole
+        x:
+          type: number
+          description: x position of the collar
+        y:
+          type: number
+          description: Y position of the collar
+        z:
+          type: number
+          description: Z posisiont of the collar
+    borehole_output:
+      type: object
+      properties:
+        borehole_id:
+          type: integer
+          description: Id of the borehole
+        name:
+          type: string
+          description: Name of the borehole
+        x:
+          type: number
+          description: x position of the collar
+        y:
+          type: number
+          description: Y position of the collar
+        z:
+          type: number
+          description: Z posisiont of the collar

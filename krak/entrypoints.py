@@ -14,9 +14,9 @@ class BuildEntryPoint(common.EntryPoint):
     name = 'build'
     description = 'Krak Server Build Tool'
 
-    def run(self)
+    def run(self, options):
         tables.generate_sql(
-            docker_compose_file_path / 'borehole_database' / 'tables.sql')
+            _docker_compose_file_path() / 'borehole_database' / 'tables.sql')
 
     def build_parser(self, parser):
         pass
@@ -33,7 +33,7 @@ class ServerEntryPoint(common.EntryPoint):
     }
 
     def run(self, options):
-        docker_compose_file_path = utils.module_root() / 'server'
+        docker_compose_file_path = _docker_compose_file_path()
 
         try:
             for action in self.actions.get(options.action):
@@ -100,3 +100,7 @@ class DocumentationEntryPoint(common.EntryPoint):
 
 def initialize():
     return {cls.name: cls() for cls in common.EntryPoint.__subclasses__()}
+
+
+def _docker_compose_file_path():
+    return utils.module_root() / 'server'
