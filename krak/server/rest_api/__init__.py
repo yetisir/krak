@@ -15,4 +15,3 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 sql = SQLAlchemy(app)
 
 ma = Marshmallow(app)
-

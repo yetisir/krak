@@ -1,5 +1,7 @@
+from sqlalchemy import event
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.orm import mapper
 
 from . import sql, ma
 
@@ -63,7 +65,7 @@ def generate_sql(sql_file_path):
 
 def setup_schema():
     for cls in sql.Model._decl_class_registry.values():
-        if not __hasattr__(cls, '__tablename__'):
+        if not hasattr(cls, '__tablename__'):
             continue
 
         class Meta:
@@ -71,10 +73,11 @@ def setup_schema():
             sqla_session = sql.session
 
         schema_class_name = f'{cls.__name__}Schema'
-        schema_class = type(schema_class_name, (ma.SQLAlchemyAutoSchema, ), {'Meta': Meta})
+        schema_class = type(
+            schema_class_name, (ma.SQLAlchemyAutoSchema, ), {'Meta': Meta})
 
         setattr(cls, '__marshmallow__', schema_class)
 
 
 def initialize():
-    sqlalchemy.event.listen(mapper, 'after_configured', setup_schema)
+    event.listen(mapper, 'after_configured', setup_schema)
