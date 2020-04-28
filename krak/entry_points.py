@@ -20,7 +20,6 @@ class ServerEntryPoint(common.EntryPoint):
         'stop': [['stop']],
     }
 
-
     def run(self, options):
         docker_compose_file_path = utils.module_root() / 'server'
 

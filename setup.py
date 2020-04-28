@@ -11,12 +11,13 @@ setup(
     author=krak.__author__,
     author_email=krak.__email__,
     install_requires=[
+        'connextion',
+        'docker',
+        'flask',
         'pytest',
         'pytest-flake8',
-        'flask',
         'sqlalchemy',
         'sphinx',
-        'docker',
     ],
     zip_safe=False,
     entry_points={
