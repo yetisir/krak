@@ -47,7 +47,7 @@ class Lithology_logs(Base):
     depth_from = sql.Column(sql.Float(), primary_key=True)
     depth_to = sql.Column(sql.Float(), nullable=False)
     lithology_id = sql.Column(
-            sql.Float(), sql.ForeignKey('lithologies.lithology_id'),
+            sql.Integer(), sql.ForeignKey('lithologies.lithology_id'),
             nullable=False)
     comments = sql.Column(sql.String(1024))
 
@@ -68,7 +68,7 @@ class PhotoLogs(Base):
     depth_from = sql.Column(sql.Float(), primary_key=True)
     depth_to = sql.Column(sql.Float(), nullable=False)
     photo_id = sql.Column(
-            sql.Float(), sql.ForeignKey('photos.photo_id'), nullable=False)
+            sql.Integer(), sql.ForeignKey('photos.photo_id'), nullable=False)
     comments = sql.Column(sql.String(1024))
 
 

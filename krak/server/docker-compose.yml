@@ -1,15 +1,16 @@
 version: '3'
 
 services:
-  borehole_databse:
-    build: './borehole_database'
+  borehole_database:
+    build: ./borehole_database
     ports:
-      - '5432:5432'
+      - 5432:5432
     volumes:
-      - 'borehole_database:/var/lib/borehole_database'
+      - borehole_database:/var/lib/borehole_database
     environment:
-      - 'ALLOW_EMPTY_PASSWORD=yes'
-
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      PASTGRES_DB: borehole_database
 volumes:
   borehole_database:
     driver: local

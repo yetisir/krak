@@ -21,7 +21,7 @@ class ServerEntryPoint(common.EntryPoint):
 
         try:
             subprocess.run(
-                ['docker-compose', 'up'],
+                ['docker-compose', 'up', '--build'],
                 cwd=docker_compose_file_path.as_posix(),
             )
         except KeyboardInterrupt:
