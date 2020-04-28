@@ -1,15 +1,15 @@
-version: '2'
+version: '3'
 
 services:
- postgresql:
-    image: 'bitnami/postgresql:11'
+  borehole_databse:
+    build: './borehole_database'
     ports:
       - '5432:5432'
     volumes:
-      - 'postgresql_data:/bitnami/postgresql'
+      - 'borehole_database:/var/lib/borehole_database'
     environment:
       - 'ALLOW_EMPTY_PASSWORD=yes'
 
 volumes:
-  postgresql_data:
+  borehole_database:
     driver: local

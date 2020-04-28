@@ -14,6 +14,7 @@ setup(
         'pytest',
         'pytest-flake8',
         'flask',
+        'sqlalchemy',
         'docker',
     ],
     zip_safe=False,
