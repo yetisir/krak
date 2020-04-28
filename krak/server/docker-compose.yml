@@ -11,6 +11,7 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       PASTGRES_DB: borehole_database
+    restart: always
 volumes:
   borehole_database:
     driver: local
