@@ -14,16 +14,24 @@ class ServerEntryPoint(common.EntryPoint):
     name = 'server'
     description = 'Krak Server Orchestrator'
 
+    actions = {
+        'new': [['rm'], ['up', '--build']],
+        'resume': [['up']],
+        'stop': [['stop']],
+    }
+
+
     def run(self, options):
         docker_compose_file_path = utils.module_root() / 'server'
 
         tables.generate_sql()
 
         try:
-            subprocess.run(
-                ['docker-compose', 'up', '--build'],
-                cwd=docker_compose_file_path.as_posix(),
-            )
+            for action in self.actions.get(options.action):
+                subprocess.run(
+                    ['docker-compose'] + action,
+                    cwd=docker_compose_file_path.as_posix(),
+                )
         except KeyboardInterrupt:
             subprocess.run(
                 ['docker-compose', 'stop'],
@@ -32,8 +40,8 @@ class ServerEntryPoint(common.EntryPoint):
 
     def build_parser(self, parser):
         parser.add_argument(
-            'action', default='resume', const='resume',
-            choices=['resume', 'new', 'stop'])
+            'action', default='resume', const='resume', nargs='?',
+            choices=self.actions.keys())
 
 
 class TestEntryPoint(common.EntryPoint):
