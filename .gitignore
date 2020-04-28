@@ -14,3 +14,6 @@ tests/test-reports/
 # Sphinx
 docs/source/api/
 docs/build/
+
+# SQL
+krak/server/borehole_database/tables.sql
