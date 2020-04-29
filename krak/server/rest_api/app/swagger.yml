@@ -1,8 +1,13 @@
 openapi: 3.0.0
+
 info:
   description: Krak REST API
   version: 0.0.1
   title: Krak REST API
+
+servers:
+  - url: /api
+
 paths:
   /borehole:
     get:
@@ -102,41 +107,103 @@ paths:
       responses:
         "200":
           description: Successfully deleted borehole
-servers:
-  - url: /api
+  /core_photo:
+    get:
+      operationId: app.core_photo.read_all
+      summary: Read all core photo ids in db, sorted by id
+      description: Read all core photo ids in db, sorted by id
+      tags:
+        - CorePhotos
+      responses:
+        "200":
+          description: Successfully read all core photos
+          content:
+            multipart/form-data:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/core_photo_output"
+    post:
+      operationId: app.core_photo.create
+      summary: Create a new core photo
+      description: Create a new core photo
+      tags:
+        - CorePhotos
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/core_photo_input"
+        description: Core photo to create
+        required: true
+      responses:
+        "201":
+          description: Successfully created core photo
+          content:
+            multipart/form-data:
+              schema:
+                $ref: "#/components/schemas/core_photo_output"
 
 components:
   schemas:
     borehole_input:
       type: object
+      required:
+        - name
+        - easting
+        - northing
+        - elevation
       properties:
         name:
           type: string
           description: Name of the borehole
-        x:
+        easting:
           type: number
-          description: x position of the collar
-        y:
+          description: Easting position of the collar
+        northing:
           type: number
-          description: Y position of the collar
-        z:
+          description: Nonrthing position of the collar
+        elevation:
           type: number
-          description: Z posisiont of the collar
+          description: Elevation position of the collar
     borehole_output:
+      allOf:
+        - $ref: '#components/schemas/borehole_input'
+        - type: object
+          properties:
+            borehole_id:
+              type: integer
+              description: Id of the borehole
+    core_photo_input:
       type: object
       properties:
+        photo:
+          type: string
+          format: binary
+          description: ''
         borehole_id:
           type: integer
-          description: Id of the borehole
-        name:
-          type: string
-          description: Name of the borehole
-        x:
+        depth_from:
           type: number
-          description: x position of the collar
-        y:
+        depth_to:
           type: number
-          description: Y position of the collar
-        z:
-          type: number
-          description: Z posisiont of the collar
+        crop_corners:
+          type: array
+          description: list of corner coordinates to crop the photo with
+          minItems: 4
+          maxItems: 4
+          items:
+            type: array
+            description: 2d pixel coordinates
+            minItems: 2
+            maxItems: 2
+            items:
+              type: integer
+    core_photo_output:
+      allOf:
+        - $ref: '#components/schemas/core_photo_input'
+        - type: object
+          properties:
+            core_photo_id:
+              type: integer
+              description: Id of the core photo

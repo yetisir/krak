@@ -8,9 +8,9 @@ from . import sql, ma
 class Borehole(sql.Model):
     borehole_id = sql.Column(sql.Integer(), primary_key=True)
     name = sql.Column(sql.String(64), nullable=False)
-    x = sql.Column(sql.Float(), nullable=False)
-    y = sql.Column(sql.Float(), nullable=False)
-    z = sql.Column(sql.Float(), nullable=False)
+    easting = sql.Column(sql.Float(), nullable=False)
+    northing = sql.Column(sql.Float(), nullable=False)
+    elevation = sql.Column(sql.Float(), nullable=False)
 
 
 class Survey(sql.Model):

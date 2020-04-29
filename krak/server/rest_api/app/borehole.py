@@ -12,13 +12,17 @@ def read_all():
 
 
 def read_one(borehole_id):
-    borehole = _borehole(borehole_id)
+    borehole_id_match = (
+        tables.Borehole.query
+        .filter(tables.Borehole.borehole_id == borehole_id)
+        .one_or_none()
+    )
 
-    if not borehole:
+    if not borehole_id_match:
         abort(404, f'Borehole id {borehole_id} not found')
 
     schema = tables.Borehole.__marshmallow__()
-    return schema.dump(borehole)
+    return schema.dump(borehole_id_match)
 
 
 def create(body):

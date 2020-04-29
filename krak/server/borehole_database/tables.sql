@@ -2,9 +2,9 @@
 CREATE TABLE borehole (
 	borehole_id SERIAL NOT NULL, 
 	name VARCHAR(64) NOT NULL, 
-	x FLOAT NOT NULL, 
-	y FLOAT NOT NULL, 
-	z FLOAT NOT NULL, 
+	easting FLOAT NOT NULL, 
+	northing FLOAT NOT NULL, 
+	elevation FLOAT NOT NULL, 
 	PRIMARY KEY (borehole_id)
 );
 
