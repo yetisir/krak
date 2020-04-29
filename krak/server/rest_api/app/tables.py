@@ -70,6 +70,7 @@ def setup_schema():
         class Meta:
             model = cls
             sqla_session = sql.session
+            load_instance=True
 
         schema_class_name = f'{cls.__name__}Schema'
         schema_class = type(
