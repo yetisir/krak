@@ -1,6 +1,6 @@
 import argparse
 
-from krak import utils, entrypoints
+from . import utils, entrypoints
 
 
 @utils.cli_args

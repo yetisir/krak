@@ -17,6 +17,8 @@ services:
     build: ./rest_api
     ports:
       - 5001:5001
+    volumes:
+      - ./rest_api:/app # for debug mode - not neccessary for production
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin

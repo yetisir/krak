@@ -6,8 +6,8 @@ import pytest
 from sphinx.ext import apidoc
 from sphinx.cmd import build
 
-from krak import common, utils
-from krak.server.rest_api import tables
+from . import common, utils
+from .server.rest_api.app import tables
 
 
 class BuildEntryPoint(common.EntryPoint):

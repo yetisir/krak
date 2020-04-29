@@ -4,5 +4,6 @@ flask-sqlalchemy
 flask-marshmallow
 marshmallow
 marshmallow-sqlalchemy
+psycopg2
 sqlalchemy
 

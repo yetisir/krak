@@ -1,12 +1,12 @@
 from flask import make_response, abort
 
-from .config import sql
-import .tables
+from . import tables, sql
 
 
 def read_all():
 
-    boreholes = tables.Borehole.query.order_by(tables.Borehole.id).all()
+    boreholes = tables.Borehole.query.order_by(
+        tables.Borehole.borehole_id).all()
     schema = tables.Borehole.__marshmallow__(many=True)
     return schema.dump(boreholes)
 
