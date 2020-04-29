@@ -1,4 +1,3 @@
-from sqlalchemy import event
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.orm import mapper
@@ -77,7 +76,3 @@ def setup_schema():
             schema_class_name, (ma.SQLAlchemyAutoSchema, ), {'Meta': Meta})
 
         setattr(cls, '__marshmallow__', schema_class)
-
-
-def initialize():
-    event.listen(mapper, 'after_configured', setup_schema)

@@ -24,6 +24,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: borehole_database
       POSTGRES_PORT: 5432
+      POSTGRES_HOST: borehole_database
     restart: always
     depends_on:
         - borehole_database

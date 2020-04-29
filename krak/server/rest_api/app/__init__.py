@@ -15,9 +15,10 @@ try:
     db_password = os.environ['POSTGRES_PASSWORD']
     db_port = os.environ['POSTGRES_PORT']
     db_name = os.environ['POSTGRES_DB']
+    db_host = os.environ['POSTGRES_HOST']
     db_uri = (
         f'postgres+psycopg2://'
-        f'{db_user}:{db_password}@0.0.0.0:{db_port}/{db_name}')
+        f'{db_user}:{db_password}@{db_host}:{db_port}/{db_name}')
 except KeyError:
     app.logger.warn(
         'PostgreSQL credentials not found in ENV - setting backend as sqlite')
