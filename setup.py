@@ -1,15 +1,13 @@
 from setuptools import setup
 
-import krak
-
 
 setup(
-    name=krak.__name__,
-    version=krak.__version__,
-    description=krak.__description__,
-    url=krak.__url__,
-    author=krak.__author__,
-    author_email=krak.__email__,
+    name='KraK',
+    version='0.1.0',
+    description='KraK Python Library',
+    url='http://github.com/yetisir/krak',
+    author='M.Yetisir',
+    author_email='yetisir@gmail.com',
     install_requires=[
         'vtk>=8.1'
     ],
