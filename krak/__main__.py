@@ -5,7 +5,6 @@ from . import utils, entrypoints
 
 @utils.cli_args
 def main(args=None):
-
     # create the primary parser
     parser = argparse.ArgumentParser(description='Krak')
     subparsers = parser.add_subparsers(dest='entry_point')
@@ -16,7 +15,8 @@ def main(args=None):
 
     # add a subparser for each entry_point
     for entry_point in entry_points.values():
-        subparser = subparsers.add_parser(entry_point.name)
+        subparser = subparsers.add_parser(
+            entry_point.name, aliases=entry_point.aliases)
         entry_point.build_parser(subparser)
 
     # parse the entry point

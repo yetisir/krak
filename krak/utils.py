@@ -1,13 +1,11 @@
 import sys
 import pathlib
-from functools import wraps
-
-import krak
+import functools
 
 
 def cli_args(function):
 
-    @wraps(function)
+    @functools.wraps(function)
     def wrapper(*args, **kwargs):
         if 'args' not in kwargs:
             return function(*args, **kwargs)
@@ -17,7 +15,3 @@ def cli_args(function):
             return function(*args, **kwargs)
 
     return wrapper
-
-
-def module_root():
-    return pathlib.Path(krak.__file__).parent
