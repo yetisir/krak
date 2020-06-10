@@ -40,13 +40,32 @@ class LithologyLog(sql.Model):
     comments = sql.Column(sql.String(1024))
 
 
+class CorePhotoCorner(sql.Model):
+    __tablename__ = 'corephotocorner'
+    corner_id = sql.Column(sql.Integer, primary_key=True)
+    top = sql.Column(sql.Float(), nullable=False)
+    left = sql.Column(sql.Float(), nullable=False)
+
+
 class CorePhotoLog(sql.Model):
-    borehole_id = sql.Column(
-        sql.Integer(), sql.ForeignKey('borehole.borehole_id'),
-        primary_key=True)
+    hash = sql.Column(sql.Integer, primary_key=True)
+    borehole_id = sql.Column(sql.Integer(),
+        sql.ForeignKey('borehole.borehole_id'), nullable=False)
     depth_from = sql.Column(sql.Float(), primary_key=True)
     depth_to = sql.Column(sql.Float(), nullable=False)
     path = sql.Column(sql.String(1024), nullable=False)
+    crop_corner_1 = sql.Column(
+        sql.Integer(), sql.ForeignKey(CorePhotoCorner.corner_id),
+        nullable=False)
+    crop_corner_2 = sql.Column(
+        sql.Integer(), sql.ForeignKey(CorePhotoCorner.corner_id),
+        nullable=False)
+    crop_corner_3 = sql.Column(
+        sql.Integer(), sql.ForeignKey(CorePhotoCorner.corner_id),
+        nullable=False)
+    crop_corner_4 = sql.Column(
+        sql.Integer(), sql.ForeignKey(CorePhotoCorner.corner_id),
+        nullable=False)
     comments = sql.Column(sql.String(1024))
 
 

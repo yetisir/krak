@@ -35,12 +35,28 @@ CREATE TABLE lithology_log (
 	FOREIGN KEY(lithology_id) REFERENCES lithology (lithology_id)
 );
 
+CREATE TABLE corephotocorner (
+	corner_id SERIAL NOT NULL, 
+	top FLOAT NOT NULL, 
+	"left" FLOAT NOT NULL, 
+	PRIMARY KEY (corner_id)
+);
+
 CREATE TABLE core_photo_log (
+	hash INTEGER NOT NULL, 
 	borehole_id INTEGER NOT NULL, 
 	depth_from FLOAT NOT NULL, 
 	depth_to FLOAT NOT NULL, 
 	path VARCHAR(1024) NOT NULL, 
+	crop_corner_1 INTEGER NOT NULL, 
+	crop_corner_2 INTEGER NOT NULL, 
+	crop_corner_3 INTEGER NOT NULL, 
+	crop_corner_4 INTEGER NOT NULL, 
 	comments VARCHAR(1024), 
-	PRIMARY KEY (borehole_id, depth_from), 
-	FOREIGN KEY(borehole_id) REFERENCES borehole (borehole_id)
+	PRIMARY KEY (hash, depth_from), 
+	FOREIGN KEY(borehole_id) REFERENCES borehole (borehole_id), 
+	FOREIGN KEY(crop_corner_1) REFERENCES corephotocorner (corner_id), 
+	FOREIGN KEY(crop_corner_2) REFERENCES corephotocorner (corner_id), 
+	FOREIGN KEY(crop_corner_3) REFERENCES corephotocorner (corner_id), 
+	FOREIGN KEY(crop_corner_4) REFERENCES corephotocorner (corner_id)
 );

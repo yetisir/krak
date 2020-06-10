@@ -118,7 +118,7 @@ paths:
         "200":
           description: Successfully read all core photos
           content:
-            multipart/form-data:
+            application/json:
               schema:
                 type: array
                 items:
@@ -131,7 +131,7 @@ paths:
         - CorePhotos
       requestBody:
         content:
-          multipart/form-data:
+          application/json:
             schema:
               $ref: "#/components/schemas/core_photo_input"
         description: Core photo to create
@@ -140,7 +140,7 @@ paths:
         "201":
           description: Successfully created core photo
           content:
-            multipart/form-data:
+            application/json:
               schema:
                 $ref: "#/components/schemas/core_photo_output"
 
@@ -193,12 +193,13 @@ components:
           minItems: 4
           maxItems: 4
           items:
-            type: array
-            description: 2d pixel coordinates
-            minItems: 2
-            maxItems: 2
-            items:
-              type: integer
+            type: object
+            description: 2d pixel coordinates (left, top)
+            properties:
+              left:
+                type: number
+              top:
+                type: number
     core_photo_output:
       allOf:
         - $ref: '#components/schemas/core_photo_input'

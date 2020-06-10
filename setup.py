@@ -11,18 +11,8 @@ setup(
     author=krak.__author__,
     author_email=krak.__email__,
     install_requires=[
-        'connextion[swagger-ui]',
-        'docker',
-        'flask',
-        'flask-sqlalchemy',
-        'flask-marshmallow',
-        'marshmallow',
-        'marshmallow-sqlalchemy',
         'pytest',
         'pytest-flake8',
-        'sqlalchemy',
-        'sphinx',
-        'sphinxcontrib-openapi',
     ],
     zip_safe=False,
     entry_points={
