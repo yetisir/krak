@@ -1,23 +1,23 @@
 <img align="left" height="120" src="docs/assets/logo.png">
 
-# dNote - Cloud Based Note Management
+# KraK - Build Tools for Computational Analyses
 
-[![Build Status](https://travis-ci.com/yetisir/dnote.svg?branch=master)](https://travis-ci.co/yetisir/dnote) [![Coverage Status](https://coveralls.io/repos/github/yetisir/dnote/badge.svg?branch=master)](https://coveralls.io/github/yetisir/dnote?branch=master) [![Maintainability](https://api.codeclimate.com/v1/badges/9188bb54d74247ab039e/maintainability)](https://codeclimate.com/github/yetisir/dnote/maintainability) [![Documentation Status](https://readthedocs.org/projects/dnote/badge/?version=latest)](https://dnote.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/yetisir/krak.svg?branch=master)](https://travis-ci.co/yetisir/krak) [![Coverage Status](https://coveralls.io/repos/github/yetisir/krake/badge.svg?branch=master)](https://coveralls.io/github/yetisir/krak?branch=master) [![Maintainability](https://api.codeclimate.com/v1/badges/78f17dc4e5d8ebfad02e/maintainability)](https://codeclimate.com/github/yetisir/krak/maintainability) [![Documentation Status](https://readthedocs.org/projects/krak/badge/?version=latest)](https://krak.readthedocs.io/en/latest/?badge=latest)
   
 
-dNote is a simple Python based CLI utility for managing notes across systems in real-time using AWS (free-tier) cloud infrastructure. 
+KraK is a Python library to help build and run computational geomechnical models. 
 
 ## Installation
 
-The latest stable release of dNote can be installed with [pip](https://pip.pypa.io/en/stable/).
+The latest stable release of KraK can be installed with [pip](https://pip.pypa.io/en/stable/).
  
 ```bash
-python -m pip install dnote
+python -m pip install krak
 ```
 
 ## Documentation
 
-The latest documentation is hosted [here](https://dnote.readthedocs.io/en/latest/?badge=latest)
+The latest documentation is hosted [here](https://krak.readthedocs.io/en/latest/?badge=latest)
 
 
 ## License
