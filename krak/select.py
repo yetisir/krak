@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC  # , abstractmethod
 
 
 class BaseRange(ABC):
@@ -15,23 +15,29 @@ class BaseRange(ABC):
 class Union(BaseRange):
     pass
 
+
 class Intersection(BaseRange):
     pass
 
+
 class Invert(BaseRange):
     pass
+
 
 class All(BaseRange):
     def query(self, mesh):
         pass
 
+
 class Nothing(BaseRange):
     def query(self, mesh):
         pass
 
+
 class CoordinateRange(BaseRange):
     def query(self, mesh):
         pass
+
 
 class XRange(BaseRange):
     def query(self, mesh):
