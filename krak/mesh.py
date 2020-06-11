@@ -34,6 +34,12 @@ class Mesh(ABC):
     def supported_cell_types(self):
         raise NotImplementedError
 
+    def cells(self):
+        pass
+
+    def points(self):
+        pass
+
     def _get_valid_mesh(self, mesh):
         valid_cell_indices = [
             i for i, cell_type in enumerate(mesh.celltypes)
@@ -60,7 +66,6 @@ class Mesh(ABC):
             return self.bounds[2]
         elif dimension in [2, 'z']:
             return self.bounds[4]
-
 
     def translate(self, direction, distance=None):
         pass
@@ -97,7 +102,6 @@ class LineMesh(Mesh):
         super().__init__(*args, **kwargs)
 
 
-
 class SurfaceMesh(Mesh):
     dimension = 2
     supported_cell_types = [5, 6, 7, 8, 9]
@@ -112,7 +116,6 @@ class VolumeMesh(Mesh):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
 
     def extract_surface(self):
         pass
