@@ -9,7 +9,9 @@ setup(
     author='M.Yetisir',
     author_email='yetisir@gmail.com',
     install_requires=[
-        'vtk>=8.1'
+        'vtk>=8.1',
+        'pyvista>=0.24',
+        'meshio>=4.0',
     ],
     extras_require={
         'dev': [
