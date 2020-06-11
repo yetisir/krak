@@ -11,7 +11,7 @@ setup(
     install_requires=[
         'vtk>=8.1',
         'pyvista>=0.24',
-        'meshio>=4.0',
+        'meshio[all]>=4.0',
     ],
     extras_require={
         'dev': [
