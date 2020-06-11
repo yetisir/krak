@@ -2,8 +2,8 @@ from setuptools import setup
 
 
 setup(
-    name='KraK',
-    version='0.1.0',
+    name='krak',
+    version='0.1.1',
     description='KraK Python Library',
     url='http://github.com/yetisir/krak',
     author='M.Yetisir',
