@@ -1,1 +1,1 @@
-from .data.mesh import PointMesh, LineMesh, SurfaceMesh, VolumeMesh
+from .data import *
