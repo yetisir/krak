@@ -1,0 +1,15 @@
+language: python
+python:
+- '3.6'
+install:
+- python -m pip install -r requirements.txt
+- python -m pip install -e .
+script:
+- pytest --flake8 --cov=krak
+after_success:
+- coveralls
+deploy:
+  provider: pypi
+  user: yetisir
+  password:
+    secure: MPVEjMGgoTYZXTUVwfB86/5LsZD0CnCNH13Vpehv0mP5peVny6xrqq9+IMMpJi1B2t+cZFYZa7jV82M2xpYKGqMNijOTzKqqy8K5vZ+dD+TmnkxPehDTgrHLJO5rZPLvH/uUtPdiNptfewuUEhZKezV114DU5FKOhjbgwYaG/ZJnBCT+7V1iyjVlYV7EtLVwKvp9imHYqk4kZRWf0BGSakKmM6sVMcRaI+JzGeOnqshGo5su4DyWeCLy/CcnmyGrPncelTYNovWHkjrWZRAUv8Pvm36cC+PsR8OY6nScWq/0jb0Qk76aX+9IoS4Chcml2V2cBwxwJNZyNtiRO0c/QiiFHfSZa0+Hf0z7n1h/5v+2jqQT02tYORy+zv5NLKo53bxsksFqq3XnOOFmzWBoOSnWvXsT2Spy2onM2qHPtaFnJ7Mtfk0DJ59oZ1EEO6gT8WqjiABNwyp7egrHeDJibZTnHbzqRWvxK09eakc6tEeOPbFYJrivKwfL1DTx6uQXv16tabd0H/fVEuBODmD17kfOFqblc1RaRQV4OKeYCGs7Gm2gcwShyxGtJHLBYhZd5y61bt5BoLaMaMvsGFDccDRBTssHyNjUygdCil9SZBV2kDdTIhz44yfCbBKkuYdo/5kgwuJf6JE5PYqoJgW2By2P0mQE/WfPyz2MZCL9TBI=

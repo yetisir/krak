@@ -1,33 +1,26 @@
 from setuptools import setup
 
-import krak
-
 
 setup(
-    name=krak.__name__,
-    version=krak.__version__,
-    description=krak.__description__,
-    url=krak.__url__,
-    author=krak.__author__,
-    author_email=krak.__email__,
+    name='KraK',
+    version='0.1.0',
+    description='KraK Python Library',
+    url='http://github.com/yetisir/krak',
+    author='M.Yetisir',
+    author_email='yetisir@gmail.com',
     install_requires=[
-        'connextion[swagger-ui]',
-        'docker',
-        'flask',
-        'flask-sqlalchemy',
-        'flask-marshmallow',
-        'marshmallow',
-        'marshmallow-sqlalchemy',
-        'pytest',
-        'pytest-flake8',
-        'sqlalchemy',
-        'sphinx',
-        'sphinxcontrib-openapi',
+        'vtk>=8.1',
+        'pyvista>=0.24',
+        'meshio[all]>=4.0',
     ],
+    extras_require={
+        'dev': [
+            'coveralls>=2.0',
+            'mkdocs>=1.1',
+            'pytest>=5.4',
+            'pytest-flake8>=1.0',
+            'pytest-cov>=2.8',
+        ],
+    },
     zip_safe=False,
-    entry_points={
-        'console_scripts': [
-            'krak = krak.__main__:main',
-            ],
-        },
-    )
+)

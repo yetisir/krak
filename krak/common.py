@@ -1,32 +1,26 @@
-import argparse
-from abc import ABC, abstractmethod
-
-from . import utils
+from . import mesh
 
 
-class EntryPoint(ABC):
+cell_dimension_map = {
+    1: 0,
+    2: 0,
+    3: 1,
+    4: 1,
+    5: 2,
+    6: 2,
+    7: 2,
+    8: 2,
+    9: 2,
+    10: 3,
+    11: 3,
+    12: 3,
+    13: 3,
+    14: 3,
+}
 
-    @utils.cli_args
-    def main(self, args=None):
-        parser = argparse.ArgumentParser(description=self.description)
-        self.build_parser(parser)
-        parameters = parser.parse_args(args)
-        self.run(parameters)
-
-    @property
-    @abstractmethod
-    def name(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def description(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def run(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def build_parser(self, parser):
-        raise NotImplementedError
+dimension_mesh_map = {
+    0: mesh.PointMesh,
+    1: mesh.LineMesh,
+    2: mesh.SurfaceMesh,
+    3: mesh.VolumeMesh,
+}

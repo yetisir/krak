@@ -1,0 +1,18 @@
+site_name: KraK Python Library
+repo_url: https://github.com/yetisir/krak
+site_author: M. Yetisir
+site_description: KraK Python Library Documentation
+
+nav:
+  - Home: index.md
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - python
+
+extra:
+  social:
+    - type: github
+    - link: http://github.com/yetisir/krak
