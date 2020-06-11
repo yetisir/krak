@@ -1,12 +1,15 @@
 from abc import ABC, abstractmethod
 
 import pyvista
+import pandas
+
+from . import common
 
 
 class Mesh(ABC):
     def __init__(self, mesh):
         super().__init__()
-        self.mesh = self._get_valid_mesh(mesh)
+        self.pv_mesh = self._get_valid_mesh(mesh)
 
     @classmethod
     def from_file(cls, file_name, file_type=None):
@@ -38,37 +41,26 @@ class Mesh(ABC):
         pass
 
     def points(self):
-        pass
+        return pandas.DataFrame(self.pv_mesh.points, columns=['x', 'y', 'z'])
 
-    def _get_valid_mesh(self, mesh):
+    def _get_valid_mesh(self, pv_mesh):
         valid_cell_indices = [
-            i for i, cell_type in enumerate(mesh.celltypes)
+            i for i, cell_type in enumerate(pv_mesh.celltypes)
             if cell_type in self.supported_cell_types]
 
-        return mesh.extract_cells(valid_cell_indices)
+        return pv_mesh.extract_cells(valid_cell_indices)
+
+    @property
+    def supported_cell_types(self):
+        return [
+            cell_type for cell_type, dimension
+            in Map.cell_dimensions.items()
+            if dimension == self.dimension]
 
     @property
     def bounds(self):
-        return self.mesh.bounds
+        return self.pv_mesh.bounds
 
-    def max_bound(self, dimension):
-        if dimension in [0, 'x']:
-            return self.bounds[1]
-        elif dimension in [1, 'y']:
-            return self.bounds[3]
-        elif dimension in [2, 'z']:
-            return self.bounds[5]
-
-    def min_bound(self, dimension):
-        if dimension in [0, 'x']:
-            return self.bounds[0]
-        elif dimension in [1, 'y']:
-            return self.bounds[2]
-        elif dimension in [2, 'z']:
-            return self.bounds[4]
-
-    def translate(self, direction, distance=None):
-        pass
 
     def rotate(self, axis, angle):
         pass
@@ -85,37 +77,67 @@ class Mesh(ABC):
     def point_to_cell(self):
         pass
 
+class PointMeshFilters:
+    pass
+
+class LineMeshFilters:
+    pass
+
+class SurfaceMeshFilters:
+    pass
+
+class VolumeMeshFilters:
+    pass
+
 
 class PointMesh(Mesh):
     dimension = 0
-    supported_cell_types = [1, 2]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
 
 class LineMesh(Mesh):
     dimension = 1
-    supported_cell_types = [3, 4]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
 
 class SurfaceMesh(Mesh):
     dimension = 2
-    supported_cell_types = [5, 6, 7, 8, 9]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
 
 class VolumeMesh(Mesh):
     dimension = 3
-    supported_cell_types = [10, 22, 12, 13, 14]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def extract_surface(self):
-        pass
+        return SurfaceMesh(self.pv_mesh.extract_surface)
+
+class Map:
+    cell_dimensions = {
+        1: 0,
+        2: 0,
+        3: 1,
+        4: 1,
+        5: 2,
+        6: 2,
+        7: 2,
+        8: 2,
+        9: 2,
+        10: 3,
+        11: 3,
+        12: 3,
+        13: 3,
+        14: 3,
+    }
+
+    dimension_classes = {
+        0: PointMesh,
+        1: LineMesh,
+        2: SurfaceMesh,
+        3: VolumeMesh,
+    }
+
+
+def dimension_class(dimension):
+    return Map.dimension_classes[dimension]
+
+
+def cell_dimension(cell_type):
+    return Map.cell_dimensions[cell_type]
+
