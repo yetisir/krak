@@ -1,14 +1,17 @@
 from abc import ABC, abstractmethod
 
 import pandas
+import pymesh
 import pyvista
 import tetgen
+from tqdm import tqdm
 import vtk
 
-from . import spatial
+from . import spatial, tools, remesh
 
 
 class Mesh(ABC):
+
     def __init__(self, mesh):
         super().__init__()
 
@@ -139,7 +142,7 @@ class LineMesh(Mesh):
         direction = spatial.Direction(direction).scale(distance)
 
         line = self._clean_line()
-        extruded_surface = line.extrude(direction)
+        extruded_surface = line.extrude(direction).triangulate()
         return SurfaceMesh(extruded_surface)
 
     def extend(self, direction, distance=None):
@@ -157,6 +160,9 @@ class SurfaceMesh(Mesh):
     def _clean_surface(self):
         return self.pv_mesh.extract_surface().clean()
 
+    def _to_pymesh(self):
+        return pymesh.form_mesh(self.points.values, self.cells.values)
+
     def tetrahedral_mesh(self, **kwargs):
         # TODO: check if watertight
         # TODO: replace with CGAL to avoid AGPL
@@ -170,9 +176,6 @@ class SurfaceMesh(Mesh):
         voxelized_mesh = pyvista.voxelize(self._clean_surface(), **kwargs)
         return VolumeMesh(voxelized_mesh)
 
-    def remesh(self):
-        pass
-
     def boundary(self):
         boundary = self._clean_surface().extract_feature_edges(
             manifold_edges=False, feature_edges=False)
@@ -184,27 +187,9 @@ class SurfaceMesh(Mesh):
 
         extruded_surface = boundary.extrude(direction)
         translated_surface = self.translate(direction)
-        import pdb; pdb.set_trace()
+
+
         return self.merge(extruded_surface, translated_surface)
-
-        cell_sizes = boundary.pv_mesh.compute_cell_sizes()
-        average_cell_size = cell_sizes.cell_arrays['Length'].mean()
-
-        layers = int(distance / average_cell_size) + 1
-        layer_size = distance / layers
-
-        direction = spatial.Direction(direction).scale(layer_size)
-        extruded_surface = boundary.extrude(direction)
-
-        combined = pyvista.MultiBlock()
-        for i in range(layers):
-            combined.append(extruded_surface.translate(direction, layer_size * i).pv_mesh)
-
-        combined.append(self.pv_mesh)
-        combined.append(self.translate(direction, distance).pv_mesh)
-        cleaned_combined = combined.combine().extract_surface().clean()
-
-        return SurfaceMesh(cleaned_combined)
 
     def extend(self, direction, distance=None):
         pass
@@ -225,6 +210,34 @@ class SurfaceMesh(Mesh):
         clipper.SetInputData(self._clean_surface())
         clipper.Update()
         return SurfaceMesh.from_vtk(clipper.GetOutput())
+
+    def _split_long_edges(self, max_length):
+        mesh = pymesh.form_mesh(self.points.values, self.cells.values)
+        split_mesh, _ = pymesh.split_long_edges(mesh, max_length)
+        return tools.create_mesh(split_mesh.vertices, split_mesh.faces)
+
+    def _collapse_short_edges(self, min_length):
+        mesh = pymesh.form_mesh(self.points.values, self.cells.values)
+        collapsed_mesh, _ = pymesh.collapse_short_edges(mesh, min_length, preserve_feature=True)
+        return tools.create_mesh(collapsed_mesh.vertices, collapsed_mesh.faces)
+
+    def _to_pymesh(self):
+        return pymesh.form_mesh(self.points.values, self.cells.values)
+
+
+    def remesh(self, detail='low', algorithm='general'):
+        # TODO: rewrite
+        #if size is None:
+        #    cell_sizes = self.pv_mesh.compute_cell_sizes()
+        #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
+
+        algorithm_map = {
+            'general': remesh.gen_remesh,
+            'greedy': remesh.gre_remesh,
+            'incremental': remesh.inc_remesh,
+        }
+
+        return tools.load_mesh(algorithm_map[algorithm](self._to_pymesh(), detail=detail))
 
 class VolumeMesh(Mesh):
     dimension = 3
