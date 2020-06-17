@@ -10,4 +10,4 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - run: python -m pip install -e .
       - run: pytest --flake8 --cov=krak
-      - run: ./circleci/pypi.sh
+      - run: ./project/.circleci/pypi.sh
