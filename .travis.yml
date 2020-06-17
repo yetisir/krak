@@ -1,7 +1,7 @@
 services:
   - docker
 before_install:
-  - docker run pymesh/pyemsh:py3.6-slim 
+  - docker run pymesh/pymesh:py3.6-slim 
 language: python
 python:
 - '3.6'
