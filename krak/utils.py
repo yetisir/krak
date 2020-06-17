@@ -1,6 +1,8 @@
 import sys
 import functools
 
+import numpy as np
+
 
 def cli_args(function):
 

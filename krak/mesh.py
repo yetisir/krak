@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 
-import pyvista
 import pandas
+import pyvista
 import tetgen
+import vtk
+
+from . import spatial
 
 
 class Mesh(ABC):
@@ -11,6 +14,12 @@ class Mesh(ABC):
 
         self.pv_mesh = mesh.cast_to_unstructured_grid()
         self._remove_invalid_cells()
+
+    def __add__(self, other):
+        return self.merge(other)
+
+    def __sub__(self, other):
+        pass
 
     @classmethod
     def from_file(cls, file_name, file_type=None):
@@ -22,7 +31,7 @@ class Mesh(ABC):
 
     @classmethod
     def from_vtk(cls, mesh):
-        raise NotImplementedError
+        return cls(pyvista.wrap(mesh))  # untested
 
     @classmethod
     def from_meshio(cls, mesh):
@@ -40,7 +49,7 @@ class Mesh(ABC):
     def cells(self):
         # TODO: use meshios maps instead of iterating through vtk
         cell_list_connectivity = []
-        start_index = 0
+        start_index = 1
 
         cell_iterator = self.pv_mesh.NewCellIterator()
         cell_connectivity = self.pv_mesh.cells
@@ -48,7 +57,7 @@ class Mesh(ABC):
             end_index = start_index + cell_iterator.GetNumberOfPoints()
             cell_list_connectivity.append(
                 cell_connectivity[start_index:end_index])
-            start_index = end_index
+            start_index = end_index + 1
 
         return pandas.DataFrame(cell_list_connectivity).add_prefix('point_')
 
@@ -73,6 +82,14 @@ class Mesh(ABC):
     def bounds(self):
         return self.pv_mesh.bounds
 
+    def translate(self, direction, distance=None):
+        direction = spatial.Direction(direction).scale(distance)
+
+        copy = self.pv_mesh.copy(deep=True)
+        copy.translate(direction)
+
+        return self.__class__(copy)
+
     def rotate(self, axis, angle):
         pass
 
@@ -88,49 +105,126 @@ class Mesh(ABC):
     def point_to_cell(self):
         pass
 
+    def flatten(self, plane=None):
+        if plane is None:
+            plane = spatial.Plane(origin=(0, 0, 0), normal=(0, 0, 1))
 
-class PointMeshFilters:
-    pass
+        flattened_mesh = self.pv_mesh.extract_surface().project_points_to_plane(
+            origin=plane.origin, normal=plane.orientation)
 
+        return self.__class__(flattened_mesh)
 
-class LineMeshFilters:
-    pass
+    def merge(self, *meshes):
+        pv_mesh = self.pv_mesh
+        for mesh in meshes:
+            pv_mesh = pv_mesh.merge(mesh.pv_mesh)
 
-
-class SurfaceMeshFilters:
-    pass
-
-
-class VolumeMeshFilters:
-    pass
+        return self.__class__(pv_mesh)
 
 
 class PointMesh(Mesh):
     dimension = 0
 
+    def extrude(self, direction, distance):
+        pass
+
 
 class LineMesh(Mesh):
     dimension = 1
 
+    def _clean_line(self):
+        return self.pv_mesh.extract_surface().clean()
+
+    def extrude(self, direction, distance=None):
+        direction = spatial.Direction(direction).scale(distance)
+
+        line = self._clean_line()
+        extruded_surface = line.extrude(direction)
+        return SurfaceMesh(extruded_surface)
+
+    def extend(self, direction, distance=None):
+        pass
+
+    def split(self, angle=90):
+        flattened_mesh = self.flatten()._clean_line()
+
+
 
 class SurfaceMesh(Mesh):
     dimension = 2
-    #TODO: add watertight attribute
+    # TODO: add watertight attribute
 
     def _clean_surface(self):
         return self.pv_mesh.extract_surface().clean()
 
     def tetrahedral_mesh(self, **kwargs):
         # TODO: check if watertight
+        # TODO: replace with CGAL to avoid AGPL
         tetrahedralizer = tetgen.TetGen(self._clean_surface())
         tetrahedralizer.make_manifold()
         tetrahedralizer.tetrahedralize(**kwargs)
         return VolumeMesh(tetrahedralizer.grid)
 
     def voxel_mesh(self, **kwargs):
+        # TODO: check if watertight
         voxelized_mesh = pyvista.voxelize(self._clean_surface(), **kwargs)
         return VolumeMesh(voxelized_mesh)
 
+    def remesh(self):
+        pass
+
+    def boundary(self):
+        boundary = self._clean_surface().extract_feature_edges(
+            manifold_edges=False, feature_edges=False)
+        return LineMesh(boundary)
+
+    def extrude(self, direction, distance=None):
+        direction = spatial.Direction(direction).scale(distance)
+        boundary = self.boundary()
+
+        extruded_surface = boundary.extrude(direction)
+        translated_surface = self.translate(direction)
+        import pdb; pdb.set_trace()
+        return self.merge(extruded_surface, translated_surface)
+
+        cell_sizes = boundary.pv_mesh.compute_cell_sizes()
+        average_cell_size = cell_sizes.cell_arrays['Length'].mean()
+
+        layers = int(distance / average_cell_size) + 1
+        layer_size = distance / layers
+
+        direction = spatial.Direction(direction).scale(layer_size)
+        extruded_surface = boundary.extrude(direction)
+
+        combined = pyvista.MultiBlock()
+        for i in range(layers):
+            combined.append(extruded_surface.translate(direction, layer_size * i).pv_mesh)
+
+        combined.append(self.pv_mesh)
+        combined.append(self.translate(direction, distance).pv_mesh)
+        cleaned_combined = combined.combine().extract_surface().clean()
+
+        return SurfaceMesh(cleaned_combined)
+
+    def extend(self, direction, distance=None):
+        pass
+
+    def clip_closed(self, plane=None, **kwargs):
+        if plane is None:
+            plane = spatial.Plane(**kwargs)
+
+        vtk_plane = vtk.vtkPlane()
+        vtk_plane.SetOrigin(*plane.origin)
+        vtk_plane.SetNormal(*plane.orientation)
+
+        plane_collection = vtk.vtkPlaneCollection()
+        plane_collection.AddItem(vtk_plane)
+
+        clipper = vtk.vtkClipClosedSurface()
+        clipper.SetClippingPlanes(plane_collection)
+        clipper.SetInputData(self._clean_surface())
+        clipper.Update()
+        return SurfaceMesh.from_vtk(clipper.GetOutput())
 
 class VolumeMesh(Mesh):
     dimension = 3

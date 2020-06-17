@@ -13,6 +13,7 @@ setup(
         'pyvista>=0.24',
         'meshio[all]>=4.0',
         'tetgen>=0.4',
+        'pandas>=1.0',
     ],
     extras_require={
         'dev': [
