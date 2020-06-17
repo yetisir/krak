@@ -6,7 +6,7 @@ jobs:
       - image: pymesh/pymesh:py3.6-slim
     steps:
       - checkout
-      - run: apt update && apt -y install libstdc++6
+      - run: apt update && apt -y install libstdc++6 python-qt4 libgl1-mesa-glx
       - run: python -m pip install -r requirements.txt
       - run: python -m pip install -e .
       - run: pytest --flake8 --cov=krak 
