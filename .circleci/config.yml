@@ -14,4 +14,4 @@ jobs:
       - run: python -m pip install -e .
       - run: pytest --flake8 --cov=krak
       - run: bash ~/project/.circleci/pypi.sh
-      - coveralls/upload
+        # - coveralls/upload
