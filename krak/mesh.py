@@ -4,7 +4,6 @@ import pandas
 import pymesh
 import pyvista
 import tetgen
-from tqdm import tqdm
 import vtk
 
 from . import spatial, tools, remesh
@@ -112,8 +111,9 @@ class Mesh(ABC):
         if plane is None:
             plane = spatial.Plane(origin=(0, 0, 0), normal=(0, 0, 1))
 
-        flattened_mesh = self.pv_mesh.extract_surface().project_points_to_plane(
-            origin=plane.origin, normal=plane.orientation)
+        flattened_mesh = (
+            self.pv_mesh.extract_surface().project_points_to_plane(
+                origin=plane.origin, normal=plane.orientation))
 
         return self.__class__(flattened_mesh)
 
@@ -149,8 +149,9 @@ class LineMesh(Mesh):
         pass
 
     def split(self, angle=90):
+        # TODO: finish splitting alogirthm
         flattened_mesh = self.flatten()._clean_line()
-
+        return flattened_mesh
 
 
 class SurfaceMesh(Mesh):
@@ -188,7 +189,6 @@ class SurfaceMesh(Mesh):
         extruded_surface = boundary.extrude(direction)
         translated_surface = self.translate(direction)
 
-
         return self.merge(extruded_surface, translated_surface)
 
     def extend(self, direction, distance=None):
@@ -218,16 +218,13 @@ class SurfaceMesh(Mesh):
 
     def _collapse_short_edges(self, min_length):
         mesh = pymesh.form_mesh(self.points.values, self.cells.values)
-        collapsed_mesh, _ = pymesh.collapse_short_edges(mesh, min_length, preserve_feature=True)
+        collapsed_mesh, _ = pymesh.collapse_short_edges(
+            mesh, min_length, preserve_feature=True)
         return tools.create_mesh(collapsed_mesh.vertices, collapsed_mesh.faces)
-
-    def _to_pymesh(self):
-        return pymesh.form_mesh(self.points.values, self.cells.values)
-
 
     def remesh(self, detail='low', algorithm='general'):
         # TODO: rewrite
-        #if size is None:
+        # if size is None:
         #    cell_sizes = self.pv_mesh.compute_cell_sizes()
         #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
 
@@ -237,7 +234,9 @@ class SurfaceMesh(Mesh):
             'incremental': remesh.inc_remesh,
         }
 
-        return tools.load_mesh(algorithm_map[algorithm](self._to_pymesh(), detail=detail))
+        return tools.load_mesh(
+            algorithm_map[algorithm](self._to_pymesh(), detail=detail))
+
 
 class VolumeMesh(Mesh):
     dimension = 3

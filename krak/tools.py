@@ -39,17 +39,19 @@ def load_mesh(unknown_mesh, dimension=None, **kwargs):
         pv_mesh = _pymesh_to_pyvista(unknown_mesh)
     elif isinstance(unknown_mesh, dict):
         pass
-        #pv_mesh = _pymesh_to_pyvista(unknown_mesh)
+        # pv_mesh = _pymesh_to_pyvista(unknown_mesh)
 
     return _mesh_from_pyvista(pv_mesh, dimension=dimension)
 
+
 def _pymesh_to_pyvista(pymesh_mesh):
-    #TODO: handle line and volume cells
+    # TODO: handle line and volume cells
     cell_array = []
     for cell in pymesh_mesh.faces:
         cell_array.append(len(cell))
         cell_array.extend(cell)
     return pyvista.PolyData(pymesh_mesh.vertices, np.array(cell_array))
+
 
 def _mesh_from_pyvista(pv_mesh, dimension=None):
     pv_mesh = pv_mesh.cast_to_unstructured_grid()

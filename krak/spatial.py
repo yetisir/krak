@@ -87,6 +87,7 @@ class Plane:
         # alias for orientation
         return self.orientation
 
+
 class Line:
     def __init__(self, origin=None, **kwargs):
         self.origin = Position(origin)
