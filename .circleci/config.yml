@@ -1,21 +1,16 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.2.1
-
 jobs:
-  build-and-test:
-    executor: python/default
+  build:
+    docker:
+      - image: pymesh/pymesh:py3.6-slim
+    working_directory: ~/krak
+
     steps:
       - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
       - run:
-          command: ./manage.py test
-          name: Test
-
-workflows:
-  main:
-    jobs:
-      - build-and-test
+        command: |
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+      - run:
+          command: pytest --flake8 --cov=krak 
