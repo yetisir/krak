@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='krak',
-    version='0.1.1',
+    version='0.1.3',
     description='KraK Python Library',
     url='http://github.com/yetisir/krak',
     author='M.Yetisir',
@@ -12,6 +12,8 @@ setup(
         'vtk>=8.1',
         'pyvista>=0.24',
         'meshio[all]>=4.0',
+        'tetgen>=0.4',
+        'pandas>=1.0',
     ],
     extras_require={
         'dev': [
