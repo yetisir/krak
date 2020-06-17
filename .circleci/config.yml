@@ -7,8 +7,8 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-        - keys:
-          - deps-{{ checksum "requirements.txt" }}
+          keys:
+            - deps-{{ checksum "requirements.txt" }}
       - run: apt update && apt -y install libstdc++6 python-qt4 libgl1-mesa-glx
       - run: python -m pip install -r requirements.txt
       - save_cache:
