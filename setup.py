@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='krak',
-    version='0.1.4',
+    version='0.1.5',
     description='KraK Python Library',
     url='http://github.com/yetisir/krak',
     author='M.Yetisir',
