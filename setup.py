@@ -14,6 +14,7 @@ setup(
         'meshio[all]>=4.0',
         'tetgen>=0.4',
         'pandas>=1.0',
+        'twisted>=20.3',
     ],
     extras_require={
         'dev': [
