@@ -11,11 +11,15 @@ from . import spatial, tools, remesh
 
 class Mesh(ABC):
 
+    _registry = []
+
     def __init__(self, mesh):
         super().__init__()
 
         self.pv_mesh = mesh.cast_to_unstructured_grid()
         self._remove_invalid_cells()
+
+        self._registry.append(self)
 
     def __add__(self, other):
         return self.merge(other)
@@ -23,21 +27,22 @@ class Mesh(ABC):
     def __sub__(self, other):
         pass
 
-    @classmethod
-    def from_file(cls, file_name, file_type=None):
-        return cls(pyvista.read_meshio(file_name, file_type))
+    def serialize(self):
+        # TODO: serialize more efficiently
 
-    @classmethod
-    def from_pyvista(cls, mesh):
-        return cls(mesh)
-
-    @classmethod
-    def from_vtk(cls, mesh):
-        return cls(pyvista.wrap(mesh))  # untested
-
-    @classmethod
-    def from_meshio(cls, mesh):
-        return cls(pyvista.from_meshio(mesh))
+        return {
+            'dimension': self.dimension,
+            'points': self.points.values.tolist(),
+            'point_arrays': {
+                key: value.tolist() for key, value
+                in self.pv_mesh.point_arrays.items()},
+            'cells': self.pv_mesh.cells.tolist(),
+            'celltypes': self.pv_mesh.celltypes.tolist(),
+            'offset': self.pv_mesh.offset.tolist(),
+            'cell_arrays': {
+                key: value.tolist() for key, value
+                in self.pv_mesh.cell_arrays.items()},
+        }
 
     @property
     @abstractmethod
@@ -222,20 +227,14 @@ class SurfaceMesh(Mesh):
             mesh, min_length, preserve_feature=True)
         return tools.create_mesh(collapsed_mesh.vertices, collapsed_mesh.faces)
 
-    def remesh(self, detail='low', algorithm='general'):
+    def remesh(self, detail='low'):
         # TODO: rewrite
         # if size is None:
         #    cell_sizes = self.pv_mesh.compute_cell_sizes()
         #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
 
-        algorithm_map = {
-            'general': remesh.gen_remesh,
-            'greedy': remesh.gre_remesh,
-            'incremental': remesh.inc_remesh,
-        }
-
         return tools.load_mesh(
-            algorithm_map[algorithm](self._to_pymesh(), detail=detail))
+            remesh.gen_remesh(self._to_pymesh(), detail=detail))
 
 
 class VolumeMesh(Mesh):
