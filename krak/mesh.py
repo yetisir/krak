@@ -1,12 +1,16 @@
+from collections import Counter
 from abc import ABC, abstractmethod
 
+import meshio
+import numpy as np
 import pandas
 import pymesh
 import pyvista
 import tetgen
 import vtk
 
-from . import spatial, tools, remesh
+
+from . import spatial, remesh
 
 
 class Mesh(ABC):
@@ -26,6 +30,22 @@ class Mesh(ABC):
 
     def __sub__(self, other):
         pass
+
+    @classmethod
+    def from_file(cls, file_name, file_type=None):
+        return cls(pyvista.read_meshio(file_name, file_type))
+
+    @classmethod
+    def from_pyvista(cls, mesh):
+        return cls(mesh)
+
+    @classmethod
+    def from_vtk(cls, mesh):
+        return cls(pyvista.wrap(mesh))  # untested
+
+    @classmethod
+    def from_meshio(cls, mesh):
+        return cls(pyvista.from_meshio(mesh))
 
     def serialize(self):
         # TODO: serialize more efficiently
@@ -219,13 +239,13 @@ class SurfaceMesh(Mesh):
     def _split_long_edges(self, max_length):
         mesh = pymesh.form_mesh(self.points.values, self.cells.values)
         split_mesh, _ = pymesh.split_long_edges(mesh, max_length)
-        return tools.create_mesh(split_mesh.vertices, split_mesh.faces)
+        return create_mesh(split_mesh.vertices, split_mesh.faces)
 
     def _collapse_short_edges(self, min_length):
         mesh = pymesh.form_mesh(self.points.values, self.cells.values)
         collapsed_mesh, _ = pymesh.collapse_short_edges(
             mesh, min_length, preserve_feature=True)
-        return tools.create_mesh(collapsed_mesh.vertices, collapsed_mesh.faces)
+        return create_mesh(collapsed_mesh.vertices, collapsed_mesh.faces)
 
     def remesh(self, detail='low'):
         # TODO: rewrite
@@ -233,7 +253,7 @@ class SurfaceMesh(Mesh):
         #    cell_sizes = self.pv_mesh.compute_cell_sizes()
         #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
 
-        return tools.load_mesh(
+        return load_mesh(
             remesh.gen_remesh(self._to_pymesh(), detail=detail))
 
 
@@ -296,3 +316,54 @@ def dimension_class(dimension):
 
 def cell_dimension(cell_type):
     return Map.cell_dimensions[cell_type]
+
+
+def create_mesh(points, cells, celltypes=None):
+    # TODO: more efficient
+    # TODO: add support for unstructured grids and points
+    return load_mesh(pymesh.form_mesh(points, cells))
+
+
+def load_mesh(unknown_mesh, dimension=None, **kwargs):
+    if isinstance(unknown_mesh, str):
+        pv_mesh = pyvista.read_meshio(unknown_mesh, **kwargs)
+    elif isinstance(unknown_mesh, pyvista.Common):
+        pv_mesh = unknown_mesh
+    elif isinstance(unknown_mesh, meshio.Mesh):
+        pv_mesh = pyvista.from_meshio(unknown_mesh)
+    elif isinstance(unknown_mesh, vtk.vtkDataSet):
+        pv_mesh = pyvista.wrap(unknown_mesh)
+    elif isinstance(unknown_mesh, Mesh):
+        pv_mesh = unknown_mesh.pv_mesh
+    elif isinstance(unknown_mesh, pymesh.Mesh):
+        pv_mesh = _pymesh_to_pyvista(unknown_mesh)
+    elif isinstance(unknown_mesh, dict):
+        pass
+        # pv_mesh = _pymesh_to_pyvista(unknown_mesh)
+
+    return _mesh_from_pyvista(pv_mesh, dimension=dimension)
+
+
+def _pymesh_to_pyvista(pymesh_mesh):
+    # TODO: handle line and volume cells
+    cell_array = []
+    for cell in pymesh_mesh.faces:
+        cell_array.append(len(cell))
+        cell_array.extend(cell)
+    return pyvista.PolyData(pymesh_mesh.vertices, np.array(cell_array))
+
+
+def _mesh_from_pyvista(pv_mesh, dimension=None):
+    pv_mesh = pv_mesh.cast_to_unstructured_grid()
+    if dimension is None:
+        dimension = _guess_mesh_dimension(pv_mesh)
+
+    return dimension_class(dimension)(pv_mesh)
+
+
+def _guess_mesh_dimension(pv_mesh):
+    cell_dimensions = [
+        cell_dimension(cell_type) for cell_type in pv_mesh.celltypes]
+    dimension_count = Counter(cell_dimensions)
+    return max(dimension_count, key=dimension_count.get)
+
