@@ -2,11 +2,13 @@ import json
 from twisted.internet import reactor, endpoints
 from twisted.protocols import basic
 
+from . import mesh
+
 
 class KrakServerClient(basic.LineReceiver):
 
     def __init__(self, objects):
-        self.objects = objects
+        self.objects = [obj for obj in objects if isinstance(obj, mesh.Mesh)]
         super().__init__()
 
 
@@ -22,22 +24,19 @@ class KrakServerClient(basic.LineReceiver):
         self.sendObjects()
         self.transport.loseConnection()
 
-    #def dataReceived(self, data):
-    #    "As soon as any data is received, write it back."
-    #    print('Server said:', data)
-
     def connectionLost(self, reason):
         print(reason)
         reactor.stop()
 
-    def connectionFailred(self, reason):
-        print('connection failed:', reason)
+    def connectionFailed(self, reason):
+        print(reason)
+        reacton.stop()
 
-
-def send(objects):
+def send(objects, host='paraview'):
     # server = xmlrpc.client.ServerProxy('http://0.0.0.0:1235')
     # server.construct([obj.serialize() for obj in objects])
-    endpoint = endpoints.TCP4ClientEndpoint(reactor, '0.0.0.0', 1235)
+    endpoint = endpoints.TCP4ClientEndpoint(reactor, host, 1235)
     endpoints.connectProtocol(
         endpoint, KrakServerClient(objects))
+
     reactor.run()

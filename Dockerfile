@@ -12,4 +12,8 @@ RUN python -m pip install -r requirements.txt
 
 COPY setup.py /krak/setup.py
 COPY krak/* /krak/krak/
-RUN python -m pip install .
+
+# TEMP
+COPY examples/* /krak/examples/
+
+RUN python -m pip install -e .
