@@ -14,3 +14,14 @@ def cli_args(function):
             return function(*args, **kwargs)
 
     return wrapper
+
+
+def assign_parent(function):
+
+    @functools.wraps(function)
+    def wrapper(*args, **kwargs):
+        result = function(*args, **kwargs)
+        result._parents.append(args[0])
+        return result
+
+    return wrapper

@@ -11,7 +11,6 @@ class KrakServerClient(basic.LineReceiver):
         self.objects = [obj for obj in objects if isinstance(obj, mesh.Mesh)]
         super().__init__()
 
-
     def sendObjects(self):
         serialized_objects = json.dumps(
             [obj.serialize() for obj in self.objects])
@@ -20,7 +19,7 @@ class KrakServerClient(basic.LineReceiver):
         self.sendLine(serialized_objects.encode())
 
     def connectionMade(self):
-        #print('test')
+        # print('test')
         self.sendObjects()
         self.transport.loseConnection()
 
@@ -30,13 +29,14 @@ class KrakServerClient(basic.LineReceiver):
 
     def connectionFailed(self, reason):
         print(reason)
-        reacton.stop()
+        reactor.stop()
 
-def send(objects, host='paraview'):
+
+def send(host='paraview'):
     # server = xmlrpc.client.ServerProxy('http://0.0.0.0:1235')
     # server.construct([obj.serialize() for obj in objects])
     endpoint = endpoints.TCP4ClientEndpoint(reactor, host, 1235)
     endpoints.connectProtocol(
-        endpoint, KrakServerClient(objects))
+        endpoint, KrakServerClient(mesh.Mesh._registry))
 
     reactor.run()
