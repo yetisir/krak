@@ -21,7 +21,7 @@ def assign_parent(function):
     @functools.wraps(function)
     def wrapper(*args, **kwargs):
         result = function(*args, **kwargs)
-        result._parents.append(args[0])
+        result.parents.append(args[0])
         return result
 
     return wrapper

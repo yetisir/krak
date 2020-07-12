@@ -35,8 +35,9 @@ class KrakServerClient(basic.LineReceiver):
 def send(host='paraview'):
     # server = xmlrpc.client.ServerProxy('http://0.0.0.0:1235')
     # server.construct([obj.serialize() for obj in objects])
+
+    # TODO: handle missing connection properly so code doesnt hang
     endpoint = endpoints.TCP4ClientEndpoint(reactor, host, 1235)
     endpoints.connectProtocol(
         endpoint, KrakServerClient(mesh.Mesh._registry))
-
     reactor.run()

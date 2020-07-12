@@ -1,6 +1,8 @@
 from collections import Counter
 from abc import ABC, abstractmethod
 import traceback
+import random
+from itertools import count
 
 import meshio
 import numpy as np
@@ -17,15 +19,28 @@ from . import spatial, remesh, utils
 class Mesh(ABC):
 
     _registry = []
+    _count = count(1)
 
-    def __init__(self, mesh, parents=None, register=True):
+    def __init__(self, mesh, parents=None, register=True, name=None):
         super().__init__()
+
+        if name is not None:
+            if name not in [obj.name for obj in self._registry]:
+                self.name = name
+            else:
+                raise ValueError('Name already taken')
+        else:
+            # TODO: better naming
+            number = next(self._count)
+            self.name = f'{self.__class__.__name__}_{number}'
+
+        self.id = hash(random.random())
 
         self.pv_mesh = mesh.cast_to_unstructured_grid()
         if parents is None:
-            self._parents = []
+            self.parents = []
         else:
-            self._parent = parents
+            self.parents = list(parents)
         self._remove_invalid_cells()
 
         if register:
@@ -58,6 +73,9 @@ class Mesh(ABC):
 
         return {
             'dimension': self.dimension,
+            'name': self.name,
+            'id': self.id,
+            'parents': [parent.id for parent in self.parents],
             'points': self.points.values.tolist(),
             'point_arrays': {
                 key: value.tolist() for key, value
@@ -161,7 +179,7 @@ class Mesh(ABC):
         for mesh in meshes:
             pv_mesh = pv_mesh.merge(mesh.pv_mesh)
 
-        return self.__class__(pv_mesh)
+        return self.__class__(pv_mesh, parents=meshes)
 
 
 class PointMesh(Mesh):
