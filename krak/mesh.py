@@ -2,6 +2,7 @@ from collections import Counter
 from abc import ABC, abstractmethod
 import traceback
 import random
+import re
 from itertools import count
 
 import meshio
@@ -9,21 +10,35 @@ import numpy as np
 import pandas
 import pymesh
 import pyvista
-import tetgen
 import vtk
 
 
-from . import spatial, remesh, utils
+from . import spatial, remesh, utils, filters
 
 
-class Mesh(ABC):
+class MeshFilters:
+    def __init__(self):
+        self.filters = {}
+        for filter in filters.Filter.__subclasses__():
+            if self.dimension not in filter.dimensions:
+                continue
+            filter_name = re.sub(
+                r'(?<!^)(?=[A-Z])', '_', filter.__name__).lower()
+            self.filters[filter_name] = filter
+            self.add_filter(filter, filter_name)
 
+    def add_filter(self, filter, name):
+        setattr(
+            self, name,
+            lambda *args, **kwargs: filter(self, *args, **kwargs).filter())
+
+
+class Mesh(MeshFilters, ABC):
     _registry = []
     _count = count(1)
 
     def __init__(self, mesh, parents=None, register=True, name=None):
         super().__init__()
-
         if name is not None:
             if name not in [obj.name for obj in self._registry]:
                 self.name = name
@@ -36,7 +51,9 @@ class Mesh(ABC):
 
         self.id = hash(random.random())
 
-        self.pv_mesh = mesh.cast_to_unstructured_grid()
+        self.pyvista = mesh.cast_to_unstructured_grid()
+        self.pv_mesh = self.pyvista  # depricated
+
         if parents is None:
             self.parents = []
         else:
@@ -52,49 +69,10 @@ class Mesh(ABC):
     def __sub__(self, other):
         pass
 
-    @classmethod
-    def from_file(cls, file_name, file_type=None):
-        return cls(pyvista.read_meshio(file_name, file_type))
-
-    @classmethod
-    def from_pyvista(cls, mesh):
-        return cls(mesh)
-
-    @classmethod
-    def from_vtk(cls, mesh):
-        return cls(pyvista.wrap(mesh))  # untested
-
-    @classmethod
-    def from_meshio(cls, mesh):
-        return cls(pyvista.from_meshio(mesh))
-
-    def serialize(self):
-        # TODO: serialize more efficiently
-
-        return {
-            'dimension': self.dimension,
-            'name': self.name,
-            'id': self.id,
-            'parents': [parent.id for parent in self.parents],
-            'points': self.points.values.tolist(),
-            'point_arrays': {
-                key: value.tolist() for key, value
-                in self.pv_mesh.point_arrays.items()},
-            'cells': self.pv_mesh.cells.tolist(),
-            'celltypes': self.pv_mesh.celltypes.tolist(),
-            'offset': self.pv_mesh.offset.tolist(),
-            'cell_arrays': {
-                key: value.tolist() for key, value
-                in self.pv_mesh.cell_arrays.items()},
-        }
-
     @property
     @abstractmethod
     def dimension(self):
         raise NotImplementedError
-
-    def plot(self, *args, **kwargs):
-        self.pv_mesh.plot(*args, **kwargs)
 
     @property
     def cells(self):
@@ -116,12 +94,6 @@ class Mesh(ABC):
     def points(self):
         return pandas.DataFrame(self.pv_mesh.points, columns=['x', 'y', 'z'])
 
-    def _remove_invalid_cells(self):
-        invalid_cell_indices = [
-            i for i, cell_type in enumerate(self.pv_mesh.celltypes)
-            if cell_type not in self.supported_cell_types]
-        self.pv_mesh.remove_cells(invalid_cell_indices)
-
     @property
     def supported_cell_types(self):
         return [
@@ -133,179 +105,112 @@ class Mesh(ABC):
     def bounds(self):
         return self.pv_mesh.bounds
 
-    @utils.assign_parent
-    def translate(self, direction, distance=None):
-        direction = spatial.Direction(direction).scale(distance)
+    def mesh_class(self, dimension=None, offset=0):
+        if dimension is None:
+            dimension = self.dimension
+        return Map.dimension_classes[dimension + offset]
 
-        copy = self.pv_mesh.copy(deep=True)
-        copy.translate(direction)
+    @staticmethod
+    def guess_dimension(pv_mesh):
+        cell_dimensions = [
+            cell_dimension(cell_type) for cell_type in pv_mesh.celltypes]
+        dimension_count = Counter(cell_dimensions)
+        return max(dimension_count, key=dimension_count.get)
 
-        return self.__class__(copy)
+    def serialize(self):
+        # TODO: serialize more efficiently
 
-    @utils.assign_parent
-    def rotate(self, axis, angle):
-        pass
+        return {
+            'dimension': self.dimension,
+            'name': self.name,
+            'id': self.id,
+            'parents': [parent.id for parent in self.parents],
+            'points': self.points.values.tolist(),
+            'point_arrays': {
+                key: value.tolist() for key, value
+                in self.pv_mesh.point_arrays.items()},
+            'cells': self.pv_mesh.cells.tolist(),
+            'celltypes': self.pv_mesh.celltypes.tolist(),
+            'offset': self.pv_mesh.offset.tolist(),
+            'cell_arrays': {
+                key: value.tolist() for key, value
+                in self.pv_mesh.cell_arrays.items()},
+        }
 
-    @utils.assign_parent
-    def scale(self, reference, ratio):
-        pass
-
-    @utils.assign_parent
-    def clip(self, surface, direction):
-        pass
-
-    @utils.assign_parent
     def cell_to_point(self):
         pass
 
-    @utils.assign_parent
     def point_to_cell(self):
         pass
 
-    @utils.assign_parent
-    def flatten(self, plane=None):
-        if plane is None:
-            plane = spatial.Plane(origin=(0, 0, 0), normal=(0, 0, 1))
+    def plot(self, *args, **kwargs):
+        self.pv_mesh.plot(*args, **kwargs)
 
-        flattened_mesh = (
-            self.pv_mesh.extract_surface().project_points_to_plane(
-                origin=plane.origin, normal=plane.orientation))
-
-        return self.__class__(flattened_mesh)
-
-    @utils.assign_parent
-    def merge(self, *meshes):
-        pv_mesh = self.pv_mesh
-        for mesh in meshes:
-            pv_mesh = pv_mesh.merge(mesh.pv_mesh)
-
-        return self.__class__(pv_mesh, parents=meshes)
+    def _remove_invalid_cells(self):
+        invalid_cell_indices = [
+            i for i, cell_type in enumerate(self.pv_mesh.celltypes)
+            if cell_type not in self.supported_cell_types]
+        self.pv_mesh.remove_cells(invalid_cell_indices)
 
 
 class PointMesh(Mesh):
     dimension = 0
 
-    @utils.assign_parent
-    def extrude(self, direction, distance):
-        pass
-
 
 class LineMesh(Mesh):
     dimension = 1
 
-    def _clean(self):
-        return self.pv_mesh.extract_surface().clean()
-
-    @utils.assign_parent
-    def extrude(self, direction, distance=None):
-        direction = spatial.Direction(direction).scale(distance)
-
-        line = self._clean()
-        extruded_surface = line.extrude(direction).triangulate()
-        return SurfaceMesh(extruded_surface)
-
-    @utils.assign_parent
-    def extend(self, direction, distance=None):
-        pass
-
-    @utils.assign_parent
-    def split(self, angle=90):
-        # TODO: finish splitting alogirthm
-        flattened_mesh = self.flatten()._clean()
-        return flattened_mesh
-
 
 class SurfaceMesh(Mesh):
     dimension = 2
-    # TODO: add watertight attribute
 
-    def _clean(self):
-        return self.pv_mesh.extract_surface().clean()
+    @property
+    def manifold(self):
+        raise NotImplementedError
+
+    @property
+    def watertight(self):
+        # alias for manifold
+        return self.manifold
 
     def _to_pymesh(self):
         return pymesh.form_mesh(self.points.values, self.cells.values)
 
-    @utils.assign_parent
-    def tetrahedral_mesh(self, **kwargs):
-        # TODO: check if watertight
-        # TODO: replace with CGAL to avoid AGPL
-        tetrahedralizer = tetgen.TetGen(self._clean())
-        tetrahedralizer.make_manifold()
-        tetrahedralizer.tetrahedralize(**kwargs)
-        return VolumeMesh(tetrahedralizer.grid)
+    # @utils.assign_parent
+    # def clip_closed(self, plane=None, **kwargs):
+    #     if plane is None:
+    #         plane = spatial.Plane(**kwargs)
 
-    @utils.assign_parent
-    def voxel_mesh(self, **kwargs):
-        # TODO: check if watertight
-        voxelized_mesh = pyvista.voxelize(self._clean(), **kwargs)
-        return VolumeMesh(voxelized_mesh)
+    #     vtk_plane = vtk.vtkPlane()
+    #     vtk_plane.SetOrigin(*plane.origin)
+    #     vtk_plane.SetNormal(*plane.orientation)
 
-    @utils.assign_parent
-    def boundary(self):
-        boundary = self._clean().extract_feature_edges(
-            manifold_edges=False, feature_edges=False)
-        return LineMesh(boundary)
+    #     plane_collection = vtk.vtkPlaneCollection()
+    #     plane_collection.AddItem(vtk_plane)
 
-    @utils.assign_parent
-    def extrude(self, direction, distance=None):
-        direction = spatial.Direction(direction).scale(distance)
-        boundary = self.boundary()
+    #     clipper = vtk.vtkClipClosedSurface()
+    #     clipper.SetClippingPlanes(plane_collection)
+    #     clipper.SetInputData(self._clean())
+    #     clipper.Update()
+    #     return SurfaceMesh.from_vtk(clipper.GetOutput())
 
-        extruded_surface = boundary.extrude(direction)
-        translated_surface = self.translate(direction)
+    # @utils.assign_parent
+    # def remesh(self, detail='low'):
+    #     # TODO: rewrite
+    #     # if size is None:
+    #     #    cell_sizes = self.pv_mesh.compute_cell_sizes()
+    #     #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
 
-        return self.merge(extruded_surface, translated_surface)
-
-    @utils.assign_parent
-    def extend(self, direction, distance=None):
-        pass
-
-    @utils.assign_parent
-    def clip_closed(self, plane=None, **kwargs):
-        if plane is None:
-            plane = spatial.Plane(**kwargs)
-
-        vtk_plane = vtk.vtkPlane()
-        vtk_plane.SetOrigin(*plane.origin)
-        vtk_plane.SetNormal(*plane.orientation)
-
-        plane_collection = vtk.vtkPlaneCollection()
-        plane_collection.AddItem(vtk_plane)
-
-        clipper = vtk.vtkClipClosedSurface()
-        clipper.SetClippingPlanes(plane_collection)
-        clipper.SetInputData(self._clean())
-        clipper.Update()
-        return SurfaceMesh.from_vtk(clipper.GetOutput())
-
-    def _split_long_edges(self, max_length):
-        mesh = pymesh.form_mesh(self.points.values, self.cells.values)
-        split_mesh, _ = pymesh.split_long_edges(mesh, max_length)
-        return create_mesh(split_mesh.vertices, split_mesh.faces)
-
-    def _collapse_short_edges(self, min_length):
-        mesh = pymesh.form_mesh(self.points.values, self.cells.values)
-        collapsed_mesh, _ = pymesh.collapse_short_edges(
-            mesh, min_length, preserve_feature=True)
-        return create_mesh(collapsed_mesh.vertices, collapsed_mesh.faces)
-
-    @utils.assign_parent
-    def remesh(self, detail='low'):
-        # TODO: rewrite
-        # if size is None:
-        #    cell_sizes = self.pv_mesh.compute_cell_sizes()
-        #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
-
-        return load_mesh(
-            remesh.gen_remesh(self._to_pymesh(), detail=detail))
+    #     return load_mesh(
+    #         remesh.gen_remesh(self._to_pymesh(), detail=detail))
 
 
 class VolumeMesh(Mesh):
     dimension = 3
 
-    @utils.assign_parent
-    def surface_mesh(self):
-        return SurfaceMesh(self.pv_mesh.extract_surface().clean())
+    # @utils.assign_parent
+    # def surface_mesh(self):
+    #     return SurfaceMesh(self.pv_mesh.extract_surface().clean())
 
 
 class Map:
@@ -354,10 +259,6 @@ class Map:
     }
 
 
-def dimension_class(dimension):
-    return Map.dimension_classes[dimension]
-
-
 def cell_dimension(cell_type):
     return Map.cell_dimensions[cell_type]
 
@@ -368,10 +269,9 @@ def create_mesh(points, cells, celltypes=None):
     return load_mesh(pymesh.form_mesh(points, cells))
 
 
-def load_mesh(unknown_mesh, dimension=None, **kwargs):
-    # TODO: combine with Mesh classmethod constructors
+def load_mesh(unknown_mesh, dimension=None):
     if isinstance(unknown_mesh, str):
-        pv_mesh = pyvista.read_meshio(unknown_mesh, **kwargs)
+        pv_mesh = pyvista.read_meshio(unknown_mesh)
     elif isinstance(unknown_mesh, pyvista.Common):
         pv_mesh = unknown_mesh
     elif isinstance(unknown_mesh, meshio.Mesh):
@@ -381,33 +281,18 @@ def load_mesh(unknown_mesh, dimension=None, **kwargs):
     elif isinstance(unknown_mesh, Mesh):
         pv_mesh = unknown_mesh.pv_mesh
     elif isinstance(unknown_mesh, pymesh.Mesh):
-        pv_mesh = _pymesh_to_pyvista(unknown_mesh)
+        # TODO: handle line and volume cells
+        cell_array = []
+        for cell in unknown_mesh.faces:
+            cell_array.append(len(cell))
+            cell_array.extend(cell)
+        pv_mesh = pyvista.PolyData(
+            unknown_mesh.vertices, np.array(cell_array))
     elif isinstance(unknown_mesh, dict):
         pass
-        # pv_mesh = _pymesh_to_pyvista(unknown_mesh)
 
-    return _mesh_from_pyvista(pv_mesh, dimension=dimension)
-
-
-def _pymesh_to_pyvista(pymesh_mesh):
-    # TODO: handle line and volume cells
-    cell_array = []
-    for cell in pymesh_mesh.faces:
-        cell_array.append(len(cell))
-        cell_array.extend(cell)
-    return pyvista.PolyData(pymesh_mesh.vertices, np.array(cell_array))
-
-
-def _mesh_from_pyvista(pv_mesh, dimension=None):
     pv_mesh = pv_mesh.cast_to_unstructured_grid()
     if dimension is None:
-        dimension = _guess_mesh_dimension(pv_mesh)
+        dimension = Mesh.guess_dimension(pv_mesh)
 
-    return dimension_class(dimension)(pv_mesh)
-
-
-def _guess_mesh_dimension(pv_mesh):
-    cell_dimensions = [
-        cell_dimension(cell_type) for cell_type in pv_mesh.celltypes]
-    dimension_count = Counter(cell_dimensions)
-    return max(dimension_count, key=dimension_count.get)
+    return Map.dimension_classes[dimension](pv_mesh)
