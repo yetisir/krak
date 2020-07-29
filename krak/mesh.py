@@ -19,13 +19,19 @@ from . import spatial, utils, filters
 class MeshFilters:
     def __init__(self):
         self.filters = {}
-        for filter in filters.Filter.__subclasses__():
+        for filter in self._all_filters(filters.Filter):
             if self.dimension not in filter.dimensions:
                 continue
             filter_name = re.sub(
                 r'(?<!^)(?=[A-Z])', '_', filter.__name__).lower()
             self.filters[filter_name] = filter
             self.add_filter(filter, filter_name)
+
+    def _all_filters(self, cls):
+        return set(cls.__subclasses__()).union(
+            [
+                subclass for filter_class in cls.__subclasses__() for
+                subclass in self._all_filters(filter_class)])
 
     def add_filter(self, filter, name):
         setattr(
@@ -105,6 +111,10 @@ class Mesh(MeshFilters, ABC):
     @property
     def bounds(self):
         return self.pyvista.bounds
+
+    @property
+    def center(self):
+        return self.pyvista.center
 
     def mesh_class(self, dimension=None, offset=0):
         if dimension is None:

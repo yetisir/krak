@@ -5,6 +5,7 @@ import pymesh
 import pyvista
 import tetgen
 from tqdm import tqdm
+import vtk
 
 from . import spatial
 
@@ -62,38 +63,40 @@ class Scale(Filter):
 class Clip(Filter):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, mesh, surface, direction):
-        pass
+    def __init__(self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False):
+        super().__init__(mesh)
+        if origin is None:
+            origin = mesh.center
+        if flip:
+            normal = [-i for i in normal]
+        if plane is None:
+            plane = spatial.Plane(origin=origin, normal=normal)
+        self.plane = plane
 
     def filter(self):
-        pass
+        mesh = self.mesh.pyvista.clip(
+            normal=self.plane.normal, origin=self.plane.origin)
 
-#     def clip_closed(self, plane=None, **kwargs):
-#         if plane is None:
-#             plane = spatial.Plane(**kwargs)
-#
-#         vtk_plane = vtk.vtkPlane()
-#         vtk_plane.SetOrigin(*plane.origin)
-#         vtk_plane.SetNormal(*plane.orientation)
-#
-#         plane_collection = vtk.vtkPlaneCollection()
-#         plane_collection.AddItem(vtk_plane)
-#
-#         clipper = vtk.vtkClipClosedSurface()
-#         clipper.SetClippingPlanes(plane_collection)
-#         clipper.SetInputData(self._clean())
-#         clipper.Update()
-#         return SurfaceMesh.from_vtk(clipper.GetOutput())
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
 
 
-class ClipClosed(Filter):
+class ClipClosed(Clip):
     dimensions = [2]
 
-    def __init__(self, mesh, surface, direction):
-        pass
-
     def filter(self):
-        pass
+        vtk_plane = vtk.vtkPlane()
+        vtk_plane.SetOrigin(self.plane.origin)
+        vtk_plane.SetNormal(self.plane.orientation)
+
+        plane_collection = vtk.vtkPlaneCollection()
+        plane_collection.AddItem(vtk_plane)
+
+        clipper = vtk.vtkClipClosedSurface()
+        clipper.SetClippingPlanes(plane_collection)
+        clipper.SetInputData(self.mesh.pyvista.extract_surface())
+        clipper.Update()
+
+        return self.mesh.mesh_class()(clipper.GetOutput(), parents=[self.mesh]).clean()
 
 
 class Flatten(Filter):
@@ -152,6 +155,14 @@ class ExtrudeSurface(Filter):
 
     def filter(self):
         mesh = self.mesh.pyvista.extract_surface().extrude(self.direction)
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
+
+
+class Triangulate(Filter):
+    dimensions = [2]
+
+    def filter(self):
+        mesh = self.mesh.pyvista.extract_surface().triangulate()
         return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
 
 
@@ -240,10 +251,6 @@ class VoxelMesh(Filter):
 
 class Boundary(Filter):
     dimensions = [1, 2]
-    # TODO: distiguish between surface and boundary edge
-
-    def __init__(self, mesh):
-        super().__init__(mesh)
 
     def filter(self):
         boundary = self.mesh.pyvista.extract_feature_edges(
@@ -270,7 +277,7 @@ class Remesh(Filter):
             self, mesh, max_length=1, max_angle=150, max_iterations=10,
             tolerance=1e-6, size_relative=1e-2, size_absolute=None):
 
-        super().__init__(mesh)
+        super().__init__(mesh.triangulate())
         self.max_iterations = max_iterations
         self.max_length = max_length
         self.max_angle = max_angle
@@ -288,6 +295,8 @@ class Remesh(Filter):
         mesh = pymesh.form_mesh(
             self.mesh.points.values, self.mesh.cells.values)
 
+        mesh, _ = pymesh.remove_degenerated_triangles(
+            mesh, self.max_iterations)
         mesh, _ = pymesh.split_long_edges(mesh, self.size_absolute)
         num_vertices = mesh.num_vertices
         for _ in tqdm(range(self.max_iterations)):
@@ -301,21 +310,16 @@ class Remesh(Filter):
 
             num_vertices = mesh.num_vertices
 
-        mesh = pymesh.resolve_self_intersection(mesh)
-        mesh, _ = pymesh.remove_duplicated_faces(mesh)
-        mesh = pymesh.compute_outer_hull(mesh)
-        mesh, _ = pymesh.remove_duplicated_faces(mesh)
-        mesh, _ = pymesh.remove_isolated_vertices(mesh)
-
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
 
 
 class CellEdges(Filter):
     dimensions = [2, 3]
 
-    def __init__(self, mesh):
-        super().__init__(mesh)
-
     def filter(self):
         mesh = self.mesh.pyvista.extract_all_edges()
         return self.mesh.mesh_class(1)(mesh, parents=[self.mesh])
+
+
+class Intersection(Filter):
+    dimensions = [2]
