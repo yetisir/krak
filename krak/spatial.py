@@ -71,8 +71,8 @@ class Direction(Vector):
 
 class Orientation(Direction):
     def __new__(
-            cls, normal=None, pole=None, strike=None, dip=None, dip_direction=None,
-            plunge=None, trend=None, flip=True):
+            cls, normal=None, pole=None, strike=None, dip=None,
+            dip_direction=None, plunge=None, trend=None, flip=True):
         assert (
             (normal is not None or pole is not None) or
             (strike is not None and dip is not None) or
@@ -90,7 +90,8 @@ class Orientation(Direction):
             if dip_direction is not None:
                 trend = dip_direction + 180
 
-        return super().__new__(cls, vector=normal, trend=trend, plunge=plunge, flip=flip)
+        return super().__new__(
+            cls, vector=normal, trend=trend, plunge=plunge, flip=flip)
 
     @property
     def strike(self):

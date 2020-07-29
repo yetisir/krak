@@ -1,4 +1,7 @@
 import json
+import subprocess
+import platform
+
 from twisted.internet import reactor, endpoints
 from twisted.protocols import basic
 
@@ -33,11 +36,17 @@ class KrakServerClient(basic.LineReceiver):
 
 
 def send(host='paraview'):
-    # server = xmlrpc.client.ServerProxy('http://0.0.0.0:1235')
-    # server.construct([obj.serialize() for obj in objects])
+    sanitized_host = ''.join(
+        char for char in host if char.isalnum() or char == '.')
 
-    # TODO: handle missing connection properly so code doesnt hang
-    endpoint = endpoints.TCP4ClientEndpoint(reactor, host, 1235)
+    packets_flag = '-n' if platform.system().lower() == 'windows' else '-c'
+
+    command = ['ping', packets_flag, '1', sanitized_host]
+    response = subprocess.call(command, stderr=subprocess.DEVNULL)
+    if response != '0':
+        return
+
+    endpoint = endpoints.TCP4ClientEndpoint(reactor, sanitized_host, 1235)
     endpoints.connectProtocol(
         endpoint, KrakServerClient(mesh.Mesh._registry))
     reactor.run()

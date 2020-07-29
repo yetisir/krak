@@ -1,6 +1,5 @@
 from collections import Counter
 from abc import ABC, abstractmethod
-import traceback
 import random
 import re
 from itertools import count
@@ -13,7 +12,7 @@ import pyvista
 import vtk
 
 
-from . import spatial, utils, filters
+from . import filters
 
 
 class MeshFilters:

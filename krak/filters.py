@@ -63,7 +63,8 @@ class Scale(Filter):
 class Clip(Filter):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False):
+    def __init__(
+            self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False):
         super().__init__(mesh)
         if origin is None:
             origin = mesh.center
@@ -96,7 +97,8 @@ class ClipClosed(Clip):
         clipper.SetInputData(self.mesh.pyvista.extract_surface())
         clipper.Update()
 
-        return self.mesh.mesh_class()(clipper.GetOutput(), parents=[self.mesh]).clean()
+        return self.mesh.mesh_class()(
+            clipper.GetOutput(), parents=[self.mesh]).clean()
 
 
 class Flatten(Filter):
@@ -190,7 +192,8 @@ class Clean(Filter):
             mesh = mesh.extract_surface()
         if self.mesh.dimension == 2:
             mesh = mesh.extract_surface()
-        return self.mesh.mesh_class()(mesh.clean(), parents=[self.mesh.parents])
+        return self.mesh.mesh_class()(
+            mesh.clean(), parents=[self.mesh.parents])
 
 
 class Extend(Filter):
@@ -246,7 +249,8 @@ class VoxelMesh(Filter):
     def filter(self):
         voxelized_mesh = pyvista.voxelize(
             self.mesh.clean().pyvista, **self.kwargs)
-        return self.mesh.mesh_class(offset=1)(voxelized_mesh, parents=[self.mesh])
+        return self.mesh.mesh_class(offset=1)(
+            voxelized_mesh, parents=[self.mesh])
 
 
 class Boundary(Filter):
