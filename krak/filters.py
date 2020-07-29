@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
 import pymesh
 import pyvista
 import tetgen
@@ -116,7 +117,7 @@ class Merge(Filter):
     def __init__(self, *meshes):
         super().__init__(meshes[0])
         dimensions = [mesh.dimension for mesh in meshes]
-        if set(dimensions) > 1:
+        if len(set(dimensions)) > 1:
             raise ValueError(
                 'Merge only possible for meshes of same dimension')
 
@@ -127,19 +128,19 @@ class Merge(Filter):
         for mesh in self.meshes[1:]:
             merged_mesh = merged_mesh.merge(mesh.pyvista)
 
-        return self.meshes[0]._class()(merged_mesh, parents=[self.meshes])
+        return self.meshes[0].mesh_class()(merged_mesh, parents=[self.meshes])
 
 
 class Extrude(Filter):
     dimensions = [0, 1, 2]
 
-    def __init__(self, mesh, direction=(0, 0, 1), distance=0):
+    def __init__(self, mesh, direction=(0, 0, 1), distance=1):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
 
     def filter(self):
-        mesh = self.mesh.pyvista.extrude(self.direction)
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
+        pass
+        # TODO: proper extrusion
 
 
 class ExtrudeSurface(Filter):
@@ -150,13 +151,8 @@ class ExtrudeSurface(Filter):
         self.direction = spatial.Direction(direction).scale(distance)
 
     def filter(self):
-        boundary = self.mesh.boundary()
-
-        extruded_surface = boundary.extrude(self.direction)
-        translated_surface = self.mesh.translate(self.direction)
-
-        return self.mesh.mesh_class()(self.mesh.merge(
-            extruded_surface, translated_surface), parents=[self.mesh])
+        mesh = self.mesh.pyvista.extract_surface().extrude(self.direction)
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
 
 
 class Split(Filter):
@@ -179,9 +175,9 @@ class Clean(Filter):
 
     def filter(self):
         mesh = self.mesh.pyvista
-        if mesh.dimension == 1:
+        if self.mesh.dimension == 1:
             mesh = mesh.extract_surface()
-        if mesh.dimension == 2:
+        if self.mesh.dimension == 2:
             mesh = mesh.extract_surface()
         return self.mesh.mesh_class()(mesh.clean(), parents=[self.mesh.parents])
 
@@ -219,7 +215,8 @@ class TetrahedralMesh(Filter):
     def filter(self):
         # TODO: check if watertight
         # TODO: replace with CGAL to avoid AGPL
-        tetrahedralizer = tetgen.TetGen(self.mesh.clean())
+        tetrahedralizer = tetgen.TetGen(
+            self.mesh.clean().pyvista.extract_surface())
         tetrahedralizer.make_manifold()
         tetrahedralizer.tetrahedralize(**self.kwargs)
         return self.mesh.mesh_class(offset=1)(
@@ -236,7 +233,8 @@ class VoxelMesh(Filter):
         self.kwargs = kwargs
 
     def filter(self):
-        voxelized_mesh = pyvista.voxelize(self.mesh.clean(), **self.kwargs)
+        voxelized_mesh = pyvista.voxelize(
+            self.mesh.clean().pyvista, **self.kwargs)
         return self.mesh.mesh_class(offset=1)(voxelized_mesh, parents=[self.mesh])
 
 
@@ -265,61 +263,59 @@ class Surface(Filter):
 
 
 class Remesh(Filter):
-    dimensions = [1, 2, 3]  # ?
+    # dimensions = [1, 2, 3]  # ?
+    dimensions = [2]
 
     def __init__(
             self, mesh, max_length=1, max_angle=150, max_iterations=10,
-            tolerance=1e-6, detail=None):  # , detail=None):
-        # bbox_min, bbox_max = mesh.bbox  # update format
-        # diagonal_length = np.linalg.norm(bbox_max - bbox_min)
+            tolerance=1e-6, size_relative=1e-2, size_absolute=None):
 
-        # if detail == 'low':
-        #    target_length = diagonal_length * 5e-3
-        # elif detail == 'high'
         super().__init__(mesh)
         self.max_iterations = max_iterations
         self.max_length = max_length
         self.max_angle = max_angle
         self.tolerance = tolerance
 
-        # TODO: specify kwargs
-        # self.kwargs = kwargs
+        if size_absolute is None:
+            bounds = np.array(mesh.bounds)
+            bbox_min = bounds[range(0, 6, 2)]
+            bbox_max = bounds[range(1, 6, 2)]
+            size_absolute = np.linalg.norm(bbox_max - bbox_min) * size_relative
+
+        self.size_absolute = size_absolute
 
     def filter(self):
-        """https://github.com/Giryerume/Remeshing-Algorithms/blob/master/generic_remesh.py"""
-        # bbox_min, bbox_max = mesh.bbox
-        # diag_len = norm(bbox_max - bbox_min)
-        # if detail == "normal":
-        #  target_len = diag_len * 5e-3
-        # elif detail == "high":
-        #  target_len = diag_len * 2.5e-3
-        # elif detail == "low":
-        #  target_len = diag_len * 1e-2
-        # print("Target resolution: {} mm".format(target_len))
+        mesh = pymesh.form_mesh(
+            self.mesh.points.values, self.mesh.cells.values)
 
-        mesh = pymesh.form_mesh(self.mesh.points.values,
-                                self.mesh.cells.values)
-
-        # mesh, _ = pymesh.remove_degenerated_triangles(mesh)
-        mesh, _ = pymesh.split_long_edges(mesh, self.max_length)
+        mesh, _ = pymesh.split_long_edges(mesh, self.size_absolute)
         num_vertices = mesh.num_vertices
-
         for _ in tqdm(range(self.max_iterations)):
-            mesh, _ = pymesh.split_long_edges(mesh, self.max_length)
             mesh, _ = pymesh.collapse_short_edges(
-                mesh, self.tolerance, preserve_feature=True)
+                mesh, self.size_absolute, preserve_feature=True)
             mesh, _ = pymesh.remove_obtuse_triangles(
                 mesh, self.max_angle, self.max_iterations)
+
             if mesh.num_vertices == num_vertices:
                 break
 
             num_vertices = mesh.num_vertices
 
-        # mesh = pymesh.resolve_self_intersection(mesh)
-        # mesh, _ = pymesh.remove_duplicated_faces(mesh)
-        # mesh = pymesh.compute_outer_hull(mesh)
-        # mesh, _ = pymesh.remove_duplicated_faces(mesh)
-        # mesh, _ = pymesh.remove_obtuse_triangles(mesh, 179.0, 5)
-        # mesh, _ = pymesh.remove_isolated_vertices(mesh)
+        mesh = pymesh.resolve_self_intersection(mesh)
+        mesh, _ = pymesh.remove_duplicated_faces(mesh)
+        mesh = pymesh.compute_outer_hull(mesh)
+        mesh, _ = pymesh.remove_duplicated_faces(mesh)
+        mesh, _ = pymesh.remove_isolated_vertices(mesh)
 
         return self.mesh.mesh_class()(mesh, parents=[self.mesh])
+
+
+class CellEdges(Filter):
+    dimensions = [2, 3]
+
+    def __init__(self, mesh):
+        super().__init__(mesh)
+
+    def filter(self):
+        mesh = self.mesh.pyvista.extract_all_edges()
+        return self.mesh.mesh_class(1)(mesh, parents=[self.mesh])

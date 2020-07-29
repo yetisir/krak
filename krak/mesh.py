@@ -13,7 +13,7 @@ import pyvista
 import vtk
 
 
-from . import spatial, remesh, utils, filters
+from . import spatial, utils, filters
 
 
 class MeshFilters:
@@ -51,8 +51,9 @@ class Mesh(MeshFilters, ABC):
 
         self.id = hash(random.random())
 
+        mesh = to_pyvista(mesh)
+
         self.pyvista = mesh.cast_to_unstructured_grid()
-        self.pv_mesh = self.pyvista  # depricated
 
         if parents is None:
             self.parents = []
@@ -80,9 +81,9 @@ class Mesh(MeshFilters, ABC):
         cell_list_connectivity = []
         start_index = 1
 
-        cell_iterator = self.pv_mesh.NewCellIterator()
-        cell_connectivity = self.pv_mesh.cells
-        for _ in range(self.pv_mesh.n_cells):
+        cell_iterator = self.pyvista.NewCellIterator()
+        cell_connectivity = self.pyvista.cells
+        for _ in range(self.pyvista.n_cells):
             end_index = start_index + cell_iterator.GetNumberOfPoints()
             cell_list_connectivity.append(
                 cell_connectivity[start_index:end_index])
@@ -92,7 +93,7 @@ class Mesh(MeshFilters, ABC):
 
     @property
     def points(self):
-        return pandas.DataFrame(self.pv_mesh.points, columns=['x', 'y', 'z'])
+        return pandas.DataFrame(self.pyvista.points, columns=['x', 'y', 'z'])
 
     @property
     def supported_cell_types(self):
@@ -103,7 +104,7 @@ class Mesh(MeshFilters, ABC):
 
     @property
     def bounds(self):
-        return self.pv_mesh.bounds
+        return self.pyvista.bounds
 
     def mesh_class(self, dimension=None, offset=0):
         if dimension is None:
@@ -111,9 +112,9 @@ class Mesh(MeshFilters, ABC):
         return Map.dimension_classes[dimension + offset]
 
     @staticmethod
-    def guess_dimension(pv_mesh):
+    def guess_dimension(pyvista):
         cell_dimensions = [
-            cell_dimension(cell_type) for cell_type in pv_mesh.celltypes]
+            cell_dimension(cell_type) for cell_type in pyvista.celltypes]
         dimension_count = Counter(cell_dimensions)
         return max(dimension_count, key=dimension_count.get)
 
@@ -128,13 +129,13 @@ class Mesh(MeshFilters, ABC):
             'points': self.points.values.tolist(),
             'point_arrays': {
                 key: value.tolist() for key, value
-                in self.pv_mesh.point_arrays.items()},
-            'cells': self.pv_mesh.cells.tolist(),
-            'celltypes': self.pv_mesh.celltypes.tolist(),
-            'offset': self.pv_mesh.offset.tolist(),
+                in self.pyvista.point_arrays.items()},
+            'cells': self.pyvista.cells.tolist(),
+            'celltypes': self.pyvista.celltypes.tolist(),
+            'offset': self.pyvista.offset.tolist(),
             'cell_arrays': {
                 key: value.tolist() for key, value
-                in self.pv_mesh.cell_arrays.items()},
+                in self.pyvista.cell_arrays.items()},
         }
 
     def cell_to_point(self):
@@ -144,13 +145,13 @@ class Mesh(MeshFilters, ABC):
         pass
 
     def plot(self, *args, **kwargs):
-        self.pv_mesh.plot(*args, **kwargs)
+        self.pyvista.plot(*args, **kwargs)
 
     def _remove_invalid_cells(self):
         invalid_cell_indices = [
-            i for i, cell_type in enumerate(self.pv_mesh.celltypes)
+            i for i, cell_type in enumerate(self.pyvista.celltypes)
             if cell_type not in self.supported_cell_types]
-        self.pv_mesh.remove_cells(invalid_cell_indices)
+        self.pyvista.remove_cells(invalid_cell_indices)
 
 
 class PointMesh(Mesh):
@@ -176,41 +177,13 @@ class SurfaceMesh(Mesh):
     def _to_pymesh(self):
         return pymesh.form_mesh(self.points.values, self.cells.values)
 
-    # @utils.assign_parent
-    # def clip_closed(self, plane=None, **kwargs):
-    #     if plane is None:
-    #         plane = spatial.Plane(**kwargs)
-
-    #     vtk_plane = vtk.vtkPlane()
-    #     vtk_plane.SetOrigin(*plane.origin)
-    #     vtk_plane.SetNormal(*plane.orientation)
-
-    #     plane_collection = vtk.vtkPlaneCollection()
-    #     plane_collection.AddItem(vtk_plane)
-
-    #     clipper = vtk.vtkClipClosedSurface()
-    #     clipper.SetClippingPlanes(plane_collection)
-    #     clipper.SetInputData(self._clean())
-    #     clipper.Update()
-    #     return SurfaceMesh.from_vtk(clipper.GetOutput())
-
-    # @utils.assign_parent
-    # def remesh(self, detail='low'):
-    #     # TODO: rewrite
-    #     # if size is None:
-    #     #    cell_sizes = self.pv_mesh.compute_cell_sizes()
-    #     #    size = average_cell_size = cell_sizes.cell_arrays['Area'].mean()
-
-    #     return load_mesh(
-    #         remesh.gen_remesh(self._to_pymesh(), detail=detail))
-
 
 class VolumeMesh(Mesh):
     dimension = 3
 
     # @utils.assign_parent
     # def surface_mesh(self):
-    #     return SurfaceMesh(self.pv_mesh.extract_surface().clean())
+    #     return SurfaceMesh(self.pyvista.extract_surface().clean())
 
 
 class Map:
@@ -269,7 +242,7 @@ def create_mesh(points, cells, celltypes=None):
     return load_mesh(pymesh.form_mesh(points, cells))
 
 
-def load_mesh(unknown_mesh, dimension=None):
+def to_pyvista(unknown_mesh):
     if isinstance(unknown_mesh, str):
         pv_mesh = pyvista.read_meshio(unknown_mesh)
     elif isinstance(unknown_mesh, pyvista.Common):
@@ -279,7 +252,7 @@ def load_mesh(unknown_mesh, dimension=None):
     elif isinstance(unknown_mesh, vtk.vtkDataSet):
         pv_mesh = pyvista.wrap(unknown_mesh)
     elif isinstance(unknown_mesh, Mesh):
-        pv_mesh = unknown_mesh.pv_mesh
+        pv_mesh = unknown_mesh.pyvista
     elif isinstance(unknown_mesh, pymesh.Mesh):
         # TODO: handle line and volume cells
         cell_array = []
@@ -291,7 +264,12 @@ def load_mesh(unknown_mesh, dimension=None):
     elif isinstance(unknown_mesh, dict):
         pass
 
-    pv_mesh = pv_mesh.cast_to_unstructured_grid()
+    return pv_mesh
+
+
+def load_mesh(mesh, dimension=None):
+
+    pv_mesh = to_pyvista(mesh).cast_to_unstructured_grid()
     if dimension is None:
         dimension = Mesh.guess_dimension(pv_mesh)
 

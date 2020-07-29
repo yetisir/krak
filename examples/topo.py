@@ -1,9 +1,8 @@
-from pyvista import examples
-
+import pdb
 import krak
 
-topo = krak.load_mesh(examples.load_random_hills())
+topo = krak.examples.random_hills()
 
-ext = krak.tools.extrude_topography(topo, -10)
+f = topo.extrude_surface(distance=10).remesh().tetrahedral_mesh()
 
-krak.send([ext])
+f.plot()
