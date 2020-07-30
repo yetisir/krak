@@ -110,9 +110,11 @@ class Orientation(Direction):
 
 
 class Plane:
-    def __init__(self, origin=None, **kwargs):
+    def __init__(self, origin=None, orientation=None, **kwargs):
         self.origin = Position(origin)
-        self.orientation = Orientation(**kwargs)
+        if orientation is None:
+            orientation = Orientation(**kwargs)
+        self.orientation = orientation
 
     @property
     def normal(self):
@@ -121,6 +123,9 @@ class Plane:
     @property
     def pole(self):
         return self.orientation
+
+    def flip(self):
+        return Plane(origin=self.origin, orientation=self.orientation.flip())
 
 
 class Line:

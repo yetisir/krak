@@ -85,9 +85,10 @@ class ClipClosed(Clip):
     dimensions = [2]
 
     def filter(self):
+        plane = self.plane.flip()
         vtk_plane = vtk.vtkPlane()
-        vtk_plane.SetOrigin(self.plane.origin)
-        vtk_plane.SetNormal(self.plane.orientation)
+        vtk_plane.SetOrigin(plane.origin)
+        vtk_plane.SetNormal(plane.orientation)
 
         plane_collection = vtk.vtkPlaneCollection()
         plane_collection.AddItem(vtk_plane)
@@ -193,7 +194,7 @@ class Clean(Filter):
         if self.mesh.dimension == 2:
             mesh = mesh.extract_surface()
         return self.mesh.mesh_class()(
-            mesh.clean(), parents=[self.mesh.parents])
+            mesh.clean(), parents=self.mesh.parents)
 
 
 class Extend(Filter):
@@ -303,7 +304,7 @@ class Remesh(Filter):
             mesh, self.max_iterations)
         mesh, _ = pymesh.split_long_edges(mesh, self.size_absolute)
         num_vertices = mesh.num_vertices
-        for _ in tqdm(range(self.max_iterations)):
+        for _ in range(self.max_iterations):
             mesh, _ = pymesh.collapse_short_edges(
                 mesh, self.size_absolute, preserve_feature=True)
             mesh, _ = pymesh.remove_obtuse_triangles(

@@ -35,7 +35,7 @@ class KrakServerClient(basic.LineReceiver):
         reactor.stop()
 
 
-def send(host='paraview'):
+def send(host='render'):
     sanitized_host = ''.join(
         char for char in host if char.isalnum() or char == '.')
 
@@ -43,7 +43,9 @@ def send(host='paraview'):
 
     command = ['ping', packets_flag, '1', sanitized_host]
     response = subprocess.call(command, stderr=subprocess.DEVNULL)
-    if response != '0':
+    print(command)
+    if int(response) > 0:
+        print(response)
         return
 
     endpoint = endpoints.TCP4ClientEndpoint(reactor, sanitized_host, 1235)
