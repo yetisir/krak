@@ -12,7 +12,7 @@ import pyvista
 import vtk
 
 
-from . import filters
+from . import filters, select, viewer
 
 
 class MeshFilters:
@@ -25,6 +25,11 @@ class MeshFilters:
                 r'(?<!^)(?=[A-Z])', '_', filter.__name__).lower()
             self.filters[filter_name] = filter
             self.add_filter(filter, filter_name)
+
+    @property
+    @abstractmethod
+    def dimension(self):
+        raise NotImplementedError
 
     def _all_filters(self, cls):
         return set(cls.__subclasses__()).union(
@@ -70,6 +75,7 @@ class Mesh(MeshFilters, ABC):
             self._registry.append(self)
 
     def __add__(self, other):
+        # TODO: implement merge
         return self.merge(other)
 
     def __sub__(self, other):
@@ -94,11 +100,94 @@ class Mesh(MeshFilters, ABC):
                 cell_connectivity[start_index:end_index])
             start_index = end_index + 1
 
-        return pandas.DataFrame(cell_list_connectivity).add_prefix('point_')
+        return pandas.DataFrame(
+            cell_list_connectivity,
+            index=pandas.RangeIndex(self.pyvista.number_of_cells)
+        ).add_prefix('point_')
+
+    @property
+    def cell_centers(self):
+        return pandas.DataFrame(
+            self.pyvista.cell_centers().points, columns=['x', 'y', 'z'],
+            index=pandas.RangeIndex(self.pyvista.number_of_cells)
+        )
 
     @property
     def points(self):
-        return pandas.DataFrame(self.pyvista.points, columns=['x', 'y', 'z'])
+        return pandas.DataFrame(
+            self.pyvista.points, columns=['x', 'y', 'z'],
+            index=pandas.RangeIndex(self.pyvista.number_of_points)
+        )
+
+    @property
+    def faces(self):
+        pass
+
+    def _get_groups(self, component):
+        if component == 'cells':
+            component_arrays = self.pyvista.cell_arrays
+            length = len(self.cells)
+        elif component == 'points':
+            component_arrays = self.pyvista.point_arrays
+            length = len(self.points)
+
+        slots = [
+            slot for slot in component_arrays.keys() if slot.split(':')[0] == 'group']
+        groups = {
+            ':'.join(slot.split(':')[1:]): component_arrays[slot] for slot in slots}
+        return pandas.DataFrame(groups, index=pandas.RangeIndex(length, name=f'{component[:-1]}_id'))
+
+    def _add_group(self, component, group, range, slot):
+        if component == 'cells':
+            component_arrays = self.pyvista.cell_arrays
+            length = len(self.cells)
+        elif component == 'points':
+            component_arrays = self.pyvista.point_arrays
+            length = len(self.points)
+
+        array_name = f'group:{slot}'
+        dtype = f'<U{len(slot)}'
+
+        if array_name in component_arrays.keys():
+            array = component_arrays[array_name]
+            if str(array.dtype) < dtype:
+                array = np.array(array, dtype=dtype)
+        else:
+            array = np.empty(length, dtype=f'<U{len(slot)}')
+            array[:] = np.NaN
+
+        array[range.query(self, component)] = group
+
+        component_arrays[f'group:{slot}'] = array
+
+    @property
+    def cell_groups(self):
+        return self._get_groups('cells')
+
+    def add_cell_group(self, group, range=select.All(), slot='default'):
+        self._add_group('cells', group=group, range=range, slot=slot)
+
+    @property
+    def point_groups(self):
+        return self._get_groups('points')
+
+    def add_point_group(self, group, range=select.All(), slot='default'):
+        self._add_group(
+            'points', group=group, range=range, slot=slot)
+
+    @property
+    def face_groups(self):
+        pass
+
+    def add_face_group(self, range, slot=0):
+        pass
+
+    @property
+    def materials(self):
+        pass
+
+    def add_material(self):
+        pass
 
     @property
     def supported_cell_types(self):
@@ -109,7 +198,7 @@ class Mesh(MeshFilters, ABC):
 
     @property
     def bounds(self):
-        return self.pyvista.bounds
+        return np.array(self.pyvista.bounds).reshape((3, 2))
 
     @property
     def center(self):
@@ -154,6 +243,8 @@ class Mesh(MeshFilters, ABC):
         pass
 
     def plot(self, *args, **kwargs):
+        #plotter = viewer.Window().plotter
+        #plotter.add_mesh(self.pyvista)
         self.pyvista.plot(*args, **kwargs)
 
     def _remove_invalid_cells(self):

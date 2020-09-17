@@ -26,38 +26,116 @@ class Filter(ABC):
         raise NotImplementedError
 
 
-class Translate(Filter):
+class Transform:
+    def transform(self, transform, mesh):
+        transform_filter = vtk.vtkTransformFilter()
+        transform_filter.SetInputData(mesh.pyvista)
+        transform_filter.SetTransform(transform)
+        transform_filter.Update()
+
+        return transform_filter.GetOutput()
+
+
+class Translate(Filter, Transform):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, mesh, direction=(0, 0, 1), distance=0):
+    def __init__(self, mesh, distance=None, direction=(0, 0, 1)):
         super().__init__(mesh)
-        self.direction = spatial.Direction(direction).scale(distance)
+        self.direction = spatial.Direction(direction)
+        if distance is not None:
+            self.direction = self.direction.scale(distance)
 
     def filter(self):
-        # TODO: use vtk tranform methods
-        mesh = self.mesh.copy().pyvista
-        mesh.translate(self.direction)
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
+        transform = vtk.vtkTransform()
+        transform.Translate(self.direction)
+        transformed_mesh = self.transform(transform, self.mesh)
+
+        return self.mesh.mesh_class()(
+            transformed_mesh, parents=[self.mesh]).clean()
 
 
-class Rotate(Filter):
+class TranslateX(Translate):
+    def __init__(self, mesh, distance=0):
+        super().__init__(mesh, direction=(1, 0, 0), distance=distance)
+
+
+class TranslateY(Translate):
+    def __init__(self, mesh, distance=0):
+        super().__init__(mesh, direction=(0, 1, 0), distance=distance)
+
+
+class TranslateZ(Translate):
+    def __init__(self, mesh, distance=0):
+        super().__init__(mesh, direction=(0, 0, 1), distance=distance)
+
+
+class Rotate(Filter, Transform):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, mesh, axis=(0, 0, 1), angle=0):
-        pass
+    def __init__(self, mesh, angle=0, origin=None, axis=(0, 0, 1)):
+        super().__init__(mesh)
+        self.axis = axis
+        self.origin = origin or mesh.center
+        self.angle = angle
 
     def filter(self):
-        pass
+        transform = vtk.vtkTransform()
+        transform.Translate([-i for i in self.origin])
+        transform.RotateWXYZ(self.angle, *self.axis)
+        transform.Translate(self.origin)
+
+        transformed_mesh = self.transform(transform, self.mesh)
+        return self.mesh.mesh_class()(
+            transformed_mesh, parents=[self.mesh]).clean()
 
 
-class Scale(Filter):
+class RotateX(Rotate):
+    def __init__(self, mesh, angle=0, origin=None):
+        super().__init__(mesh, axis=(1, 0, 0), origin=origin, angle=angle)
+
+
+class RotateY(Rotate):
+    def __init__(self, mesh, angle=0, origin=None):
+        super().__init__(mesh, axis=(0, 1, 0), origin=origin, angle=angle)
+
+
+class RotateZ(Rotate):
+    def __init__(self, mesh, angle=0, origin=None):
+        super().__init__(mesh, axis=(0, 0, 1), origin=origin, angle=angle)
+
+
+class Scale(Filter, Transform):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, reference=(0, 0, 0), ratio=1):
-        pass
+    def __init__(self, mesh, ratio=1, origin=None):
+        super().__init__(mesh)
+        self.ratio = ratio
+        self.origin = origin or mesh.center
 
     def filter(self):
-        pass
+        transform = vtk.vtkTransform()
+        transform.Translate([-i for i in self.origin])
+        transform.Scale(self.ratio)
+        transform.Translate(self.origin)
+        transformed_mesh = self.transform(transform, self.mesh)
+
+        return self.mesh.mesh_class()(
+            transformed_mesh, parents=[self.mesh]).clean()
+
+
+class ScaleX(Scale):
+    def __init__(self, mesh, ratio=1, origin=None):
+        super().__init__(mesh, origin=origin, ratio=(ratio, 0, 0))
+
+
+class ScaleY(Scale):
+    def __init__(self, mesh, ratio=1, origin=None):
+        super().__init__(mesh, origin=origin, ratio=(0, ratio, 0))
+
+
+class ScaleZ(Scale):
+    def __init__(self, mesh, ratio=1, origin=None):
+        super().__init__(mesh, origin=origin, ratio=(0, 0, ratio))
 
 
 class Clip(Filter):
@@ -66,8 +144,8 @@ class Clip(Filter):
     def __init__(
             self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False):
         super().__init__(mesh)
-        if origin is None:
-            origin = mesh.center
+        origin = origin or mesh.center
+
         if flip:
             normal = [-i for i in normal]
         if plane is None:
@@ -289,10 +367,8 @@ class Remesh(Filter):
         self.tolerance = tolerance
 
         if size_absolute is None:
-            bounds = np.array(mesh.bounds)
-            bbox_min = bounds[range(0, 6, 2)]
-            bbox_max = bounds[range(1, 6, 2)]
-            size_absolute = np.linalg.norm(bbox_max - bbox_min) * size_relative
+            bbox_diff = [bound[1] - bound[0] for bound in mesh.bounds]
+            size_absolute = np.linalg.norm(bbox_diff) * size_relative
 
         self.size_absolute = size_absolute
 

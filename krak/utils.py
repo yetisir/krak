@@ -25,3 +25,29 @@ def assign_parent(function):
         return result
 
     return wrapper
+
+
+def validate_positive(value, parameter):
+    error = ValueError(
+        f'Parameter "{parameter}" must be a positive number')
+    try:
+        float_value = float(value)
+    except TypeError:
+        return None
+    except ValueError:
+        raise error
+
+    if float_value < 0:
+        raise error
+
+    return float_value
+
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(
+                Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]

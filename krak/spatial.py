@@ -1,7 +1,5 @@
 import numpy as np
 
-# TODO: look into using existing library for the basis of these data structures
-
 
 class Vector(np.ndarray):
     # TODO: add error checking on vector
