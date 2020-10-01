@@ -86,7 +86,9 @@ class CoordinateRange(BaseRange):
         if component == 'points':
             component_positions = mesh.points
 
-        component_coordinates = component_positions[component_positions.columns[self.coordinate]]
+        component_coordinates = (
+            component_positions[component_positions.columns[self.coordinate]]
+        )
         return (
             (component_coordinates >= coordinate_range[0]) &
             (component_coordinates <= coordinate_range[1])

@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5 import Qt
-import numpy as np
+# import numpy as np
 
 import pyvista as pv
 from pyvistaqt import QtInteractor

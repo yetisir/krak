@@ -4,7 +4,7 @@ import numpy as np
 import pymesh
 import pyvista
 import tetgen
-from tqdm import tqdm
+# from tqdm import tqdm
 import vtk
 
 from . import spatial

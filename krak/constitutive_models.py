@@ -28,7 +28,10 @@ class Elastic():
 
     @property
     def poisson(self):
-        return (3 * self.bulk - 2 * self.shear) / (2 * (3 * self.bulk + self.shear))
+        return (
+            (3 * self.bulk - 2 * self.shear) /
+            (2 * (3 * self.bulk + self.shear))
+        )
 
     @poisson.setter
     def poisson(self, poisson):
@@ -49,7 +52,8 @@ class Elastic():
         self.shear = shear
 
     @classmethod
-    def _get_elastic_parameters(cls, bulk=None, shear=None, poisson=None, young=None):
+    def _get_elastic_parameters(
+            cls, bulk=None, shear=None, poisson=None, young=None):
         shear = utils.validate_positive(shear, 'shear')
         bulk = utils.validate_positive(bulk, 'bulk')
 

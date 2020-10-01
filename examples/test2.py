@@ -1,9 +1,9 @@
 from PyQt5 import QtWidgets
-from pyqtgraph import PlotWidget, plot
+# from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
 import sys  # We need sys so that we can pass argv to QApplication
-import os
-from pyqtconsole.console import PythonConsole
+# import os
+# from pyqtconsole.console import PythonConsole
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -23,9 +23,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
-    console = PythonConsole()
-    console.show()
-    console.eval_in_thread()
     main = MainWindow()
     main.show()
     sys.exit(app.exec_())

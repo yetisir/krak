@@ -12,7 +12,7 @@ import pyvista
 import vtk
 
 
-from . import filters, select, viewer
+from . import filters, select
 
 
 class MeshFilters:
@@ -132,10 +132,14 @@ class Mesh(MeshFilters, ABC):
             length = len(self.points)
 
         slots = [
-            slot for slot in component_arrays.keys() if slot.split(':')[0] == 'group']
+            slot for slot in component_arrays.keys()
+            if slot.split(':')[0] == 'group']
         groups = {
-            ':'.join(slot.split(':')[1:]): component_arrays[slot] for slot in slots}
-        return pandas.DataFrame(groups, index=pandas.RangeIndex(length, name=f'{component[:-1]}_id'))
+            ':'.join(slot.split(':')[1:]): component_arrays[slot]
+            for slot in slots}
+        return pandas.DataFrame(
+            groups,
+            index=pandas.RangeIndex(length, name=f'{component[:-1]}_id'))
 
     def _add_group(self, component, group, range, slot):
         if component == 'cells':
@@ -250,7 +254,7 @@ class Mesh(MeshFilters, ABC):
         pass
 
     def plot(self, *args, **kwargs):
-        #plotter = viewer.Window().plotter
+        # plotter = viewer.Window().plotter
         # plotter.add_mesh(self.pyvista)
         self.pyvista.plot(*args, **kwargs)
 

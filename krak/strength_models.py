@@ -52,7 +52,11 @@ class MohrCoulomb(Base):
         return np.rad2deg(self._phi)
 
     def sigma_1_strength(self, sigma_3):
-        return (2 * self.c * np.cos(self._phi))/(1-np.sin(self._phi)) + ((1 + np.sin(self._phi)) / (1 - np.sin(self._phi))) * sigma_3
+        return (
+            (2 * self.c * np.cos(self._phi)) /
+            (1-np.sin(self._phi)) +
+            ((1 + np.sin(self._phi)) / (1 - np.sin(self._phi))) * sigma_3
+        )
 
     def _envelope_derivative(self, sigma_3):
         return (1 + np.sin(self._phi)) / (1 - np.sin(self._phi))
@@ -61,7 +65,8 @@ class MohrCoulomb(Base):
 class HoekBrown(Base):
 
     def __init__(
-            self, sigma_ci, gsi=None, d=None, mi=None, mb=None, s=None, a=None, sigma_t=None):
+            self, sigma_ci, gsi=None, d=None, mi=None, mb=None, s=None,
+            a=None, sigma_t=None):
 
         self.sigma_ci = utils.validate_positive(sigma_ci, 'sigma_ci')
         self.mi = utils.validate_positive(mi, 'mi')
@@ -103,7 +108,9 @@ class HoekBrown(Base):
 
     @property
     def a(self):
-        return (0.5 + (np.exp((np.negative(self.gsi)) / 15.0) - np.exp(-20.0 / 3.0)) / 6.0)
+        return (0.5 + (
+            np.exp((np.negative(self.gsi)) / 15.0) -
+            np.exp(-20.0 / 3.0)) / 6.0)
 
     @a.setter
     def a(self, a):
@@ -164,8 +171,9 @@ class HoekBrown(Base):
 
         x1 = np.power(self.s + self.mb * sigma_3_n, self.a - 1)
         x2 = (1 + self.a) * (2 + self.a)
-        numerator = (
-            self.sigma_ci * ((1 + 2 * self.a) * self.s + (1 - self.a) * self.mb * sigma_3_n) * x1)
+        numerator = (self.sigma_ci * (
+            (1 + 2 * self.a) * self.s + (1 - self.a) *
+            self.mb * sigma_3_n) * x1)
         denominator = x2 * np.sqrt(1 + 6 * self.a * self.mb * x1 / x2)
 
         return numerator / denominator
