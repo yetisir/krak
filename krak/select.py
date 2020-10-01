@@ -35,12 +35,13 @@ class All(BaseRange):
 
 
 class Null(BaseRange):
-    def query(self, mesh):
+    def query(self, mesh, component):
         pass
 
 
 class Group(BaseRange):
-    pass
+    def query(self, mesh, component):
+        pass
 
 
 class Id(BaseRange):
@@ -95,3 +96,13 @@ class CoordinateRange(BaseRange):
 class PositionX(CoordinateRange):
     def __init__(self, *coordinate_range, **kwargs):
         super().__init__(coordinate_range, coordinate=0, **kwargs)
+
+
+class PositionY(CoordinateRange):
+    def __init__(self, *coordinate_range, **kwargs):
+        super().__init__(coordinate_range, coordinate=1, **kwargs)
+
+
+class PositionZ(CoordinateRange):
+    def __init__(self, *coordinate_range, **kwargs):
+        super().__init__(coordinate_range, coordinate=2, **kwargs)

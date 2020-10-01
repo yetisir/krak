@@ -285,6 +285,12 @@ class Extend(Filter):
     def filter(self):
         pass
 
+    def extend_1d(self):
+        pass
+
+    def extend_2d(self):
+        pass
+
 
 class Copy(Filter):
     dimensions = [0, 1, 2, 3]

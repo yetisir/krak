@@ -161,7 +161,7 @@ class Mesh(MeshFilters, ABC):
         component_arrays[f'group:{slot}'] = array
 
     @property
-    def cell_groups(self):
+    def cell_field(self):
         return self._get_groups('cells')
 
     def add_cell_group(self, group, range=select.All(), slot='default'):
@@ -187,6 +187,13 @@ class Mesh(MeshFilters, ABC):
         pass
 
     def add_material(self):
+        pass
+
+    @property
+    def boundary_conditions(self):
+        pass
+
+    def add_boundary_conditions(self):
         pass
 
     @property
@@ -244,7 +251,7 @@ class Mesh(MeshFilters, ABC):
 
     def plot(self, *args, **kwargs):
         #plotter = viewer.Window().plotter
-        #plotter.add_mesh(self.pyvista)
+        # plotter.add_mesh(self.pyvista)
         self.pyvista.plot(*args, **kwargs)
 
     def _remove_invalid_cells(self):
@@ -280,10 +287,6 @@ class SurfaceMesh(Mesh):
 
 class VolumeMesh(Mesh):
     dimension = 3
-
-    # @utils.assign_parent
-    # def surface_mesh(self):
-    #     return SurfaceMesh(self.pyvista.extract_surface().clean())
 
 
 class Map:
