@@ -22,7 +22,6 @@ class KrakServerClient(basic.LineReceiver):
         self.sendLine(serialized_objects.encode())
 
     def connectionMade(self):
-        # print('test')
         self.sendObjects()
         self.transport.loseConnection()
 
@@ -43,9 +42,7 @@ def send(host='render'):
 
     command = ['ping', packets_flag, '1', sanitized_host]
     response = subprocess.call(command, stderr=subprocess.DEVNULL)
-    print(command)
     if int(response) > 0:
-        print(response)
         return
 
     endpoint = endpoints.TCP4ClientEndpoint(reactor, sanitized_host, 1235)

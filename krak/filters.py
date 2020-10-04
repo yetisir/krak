@@ -360,6 +360,7 @@ class Surface(Filter):
 
 class Remesh(Filter):
     # dimensions = [1, 2, 3]  # ?
+    # TODO: implement remeshing for 1 and 3 dimensional meshes
     dimensions = [2]
 
     def __init__(
@@ -410,3 +411,23 @@ class CellEdges(Filter):
 
 class Intersection(Filter):
     dimensions = [2]
+
+    def filter(self, other):
+        # TODO
+        pass
+
+
+class Union(Filter):
+    dimensions = [2]
+
+    def filter(self):
+        # TODO
+        pass
+
+
+class Subtract(Filter):
+    dimensions = [2]
+
+    def filter(self):
+        # TODO
+        pass

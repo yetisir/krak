@@ -10,9 +10,10 @@ import pandas
 import pymesh
 import pyvista
 import vtk
+import ezdxf
 
 
-from . import filters, select
+from . import filters, select, viewer
 
 
 class MeshFilters:
@@ -133,7 +134,7 @@ class Mesh(MeshFilters, ABC):
 
         slots = [
             slot for slot in component_arrays.keys()
-            if slot.split(':')[0] == 'group']
+            if slot.split(':')[0] == 'slot']
         groups = {
             ':'.join(slot.split(':')[1:]): component_arrays[slot]
             for slot in slots}
@@ -149,23 +150,22 @@ class Mesh(MeshFilters, ABC):
             component_arrays = self.pyvista.point_arrays
             length = len(self.points)
 
-        array_name = f'group:{slot}'
-        dtype = f'<U{len(slot)}'
+        array_name = f'slot:{slot}'
+        dtype = f'<U{len(group)}'
 
         if array_name in component_arrays.keys():
             array = component_arrays[array_name]
-            if str(array.dtype) < dtype:
+            if len(group) > array.dtype.itemsize // array.dtype.alignment:
                 array = np.array(array, dtype=dtype)
         else:
-            array = np.empty(length, dtype=f'<U{len(slot)}')
-            array[:] = np.NaN
+            array = np.empty(length, dtype=dtype)
 
         array[range.query(self, component)] = group
 
-        component_arrays[f'group:{slot}'] = array
+        component_arrays[array_name] = array
 
     @property
-    def cell_field(self):
+    def cell_groups(self):
         return self._get_groups('cells')
 
     def add_cell_group(self, group, range=select.All(), slot='default'):
@@ -222,6 +222,8 @@ class Mesh(MeshFilters, ABC):
 
     @staticmethod
     def guess_dimension(pyvista):
+        if not pyvista.number_of_cells:
+            return None
         cell_dimensions = [
             cell_dimension(cell_type) for cell_type in pyvista.celltypes]
         dimension_count = Counter(cell_dimensions)
@@ -253,10 +255,13 @@ class Mesh(MeshFilters, ABC):
     def point_to_cell(self):
         pass
 
-    def plot(self, *args, **kwargs):
-        # plotter = viewer.Window().plotter
-        # plotter.add_mesh(self.pyvista)
-        self.pyvista.plot(*args, **kwargs)
+    def plot(self, **kwargs):
+        plotter = viewer.Window().plotter
+        plotter.add_mesh(self.pyvista, *kwargs)
+        # self.pyvista.plot(*args, **kwargs)
+
+    def save(self, file_name):
+        self.pyvista.save(file_name)
 
     def _remove_invalid_cells(self):
         invalid_cell_indices = [
@@ -349,9 +354,50 @@ def create_mesh(points, cells, celltypes=None):
     return load_mesh(pymesh.form_mesh(points, cells))
 
 
+def from_dxf(file_name):
+    dxf_surface = ezdxf.readfile(file_name)
+
+    points = vtk.vtkPoints()
+    cells = vtk.vtkCellArray()
+    mesh = vtk.vtkPolyData()
+
+    point_id = 0
+    for entity in dxf_surface.entities:
+        entity_type = entity.dxftype()
+        point_id_list = vtk.vtkIdList()
+
+        if entity_type == '3DFACE':
+            dxf_points = [getattr(entity.dxf, f'vtx{i}') for i in range(4)]
+
+        elif entity_type == 'POLYLINE':
+            dxf_points = [vertex.dxf.location for vertex in entity.vertices]
+
+        elif entity_type == 'LWPOLYLINE':
+            dxf_points = [
+                vertex[:2] + (entity.dxf.elevation, )
+                for vertex in entity.get_points()]
+        else:
+            dxf_points = []
+
+        for dxf_point in dxf_points:
+            points.InsertPoint(point_id, dxf_point)
+            point_id_list.InsertNextId(point_id)
+            point_id += 1
+
+        cells.InsertNextCell(point_id_list)
+
+    mesh.SetPoints(points)
+    mesh.SetPolys(cells)
+
+    return mesh
+
+
 def to_pyvista(unknown_mesh):
     if isinstance(unknown_mesh, str):
-        pv_mesh = pyvista.read_meshio(unknown_mesh)
+        if unknown_mesh.endswith('dxf'):
+            pv_mesh = pyvista.wrap(from_dxf(unknown_mesh))
+        else:
+            pv_mesh = pyvista.read_meshio(unknown_mesh)
     elif isinstance(unknown_mesh, pyvista.Common):
         pv_mesh = unknown_mesh
     elif isinstance(unknown_mesh, meshio.Mesh):
@@ -379,5 +425,9 @@ def load_mesh(mesh, dimension=None):
     pv_mesh = to_pyvista(mesh).cast_to_unstructured_grid()
     if dimension is None:
         dimension = Mesh.guess_dimension(pv_mesh)
+        if dimension is None:
+            raise ValueError(
+                'No valid cells or points found in mesh. '
+                'Cannot determine dimension')
 
     return Map.dimension_classes[dimension](pv_mesh)

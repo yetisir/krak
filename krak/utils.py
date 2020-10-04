@@ -3,7 +3,6 @@ import functools
 
 
 def cli_args(function):
-
     @functools.wraps(function)
     def wrapper(*args, **kwargs):
         if 'args' not in kwargs:
@@ -17,7 +16,6 @@ def cli_args(function):
 
 
 def assign_parent(function):
-
     @functools.wraps(function)
     def wrapper(*args, **kwargs):
         result = function(*args, **kwargs)
@@ -48,6 +46,5 @@ class Singleton(type):
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
-            cls._instances[cls] = super(
-                Singleton, cls).__call__(*args, **kwargs)
+            cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
