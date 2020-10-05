@@ -8,6 +8,18 @@ class Vector(np.ndarray):
 
         return np.array(vector).view(cls)
 
+    def __mul__(self, other):
+        return np.dot(self, other)
+
+    def __pow__(self, other):
+        return self.__class__(np.cross(self, other))
+
+    def __rshift__(self, other):
+        return self.project(other)
+
+    def __lshift__(self, other):
+        return other.project(self)
+
     def scale(self, size):
         if size is None:
             return self
@@ -24,6 +36,32 @@ class Vector(np.ndarray):
     @property
     def magnitude(self):
         return np.linalg.norm(self)
+
+    def _vector_projection(self, vector):
+        return self.__class__(vector.unit * np.dot(self, vector) / vector.magnitude)
+
+    def _plane_projection(self, orientation):
+        return self.__class__(self - (self >> orientation.normal))
+
+    def project(self, destination):
+
+        if destination is Position or destination is Direction:
+            return self._vector_projection(destination)
+        elif destination is Orientation:
+            return self._plane_projection(destination)
+        elif destination is Line:
+            return Line(
+                origin=destination.origin,
+                direction=self >> destination.direction)
+        elif destination is Plane:
+            return Line(
+                origin=destination.origin,
+                direction=self >> destination.orientation)
+        else:
+            try:
+                return self._vector_projection(Vector(destination))
+            except TypeError:
+                raise ValueError(f'Unable to project onto "{destination}"')
 
 
 class Position(Vector):
@@ -103,6 +141,10 @@ class Orientation(Direction):
     def dip_direction(self):
         return self.trend + 180 if self.trend < 180 else self.trend - 180
 
+    @property
+    def normal(self):
+        return Direction(self)
+
     def flip(self):
         return Orientation(normal=self, flip=True)
 
@@ -130,3 +172,12 @@ class Line:
     def __init__(self, origin=None, **kwargs):
         self.origin = Position(origin)
         self.direction = Direction(**kwargs)
+
+    def __rshift__(self, other):
+        return self.project(self, other)
+
+    def project(self, destination):
+        return Line(
+            origin=self.origin >> destination,
+            direction=self.direction >> destination,
+        )

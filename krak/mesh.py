@@ -13,7 +13,7 @@ import vtk
 import ezdxf
 
 
-from . import filters, select, viewer
+from . import filters, select, viewer, spatial
 
 
 class MeshFilters:
@@ -289,6 +289,12 @@ class SurfaceMesh(Mesh):
     def watertight(self):
         # alias for manifold
         return self.manifold
+
+    @property
+    def orientation(self):
+        normals = self.pyvista.extract_surface().compute_normals(
+            cell_normals=True, point_normals=False)['Normals']
+        return spatial.Orientation(normal=normals.mean(axis=0))
 
     def _to_pymesh(self):
         return pymesh.form_mesh(self.points.values, self.cells.values)

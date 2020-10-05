@@ -278,18 +278,34 @@ class Clean(Filter):
 class Extend(Filter):
     dimensions = [1, 2]
 
-    def __init__(self, mesh, direction=(0, 0, 1), distance=0):
+    def __init__(
+            self, mesh, direction=(0, 0, 1), distance=0, orientation=None):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
+        if orientation is None:
+            orientation = mesh.orientation
+        self.orientation = spatial.Orientation(normal=orientation)
 
     def filter(self):
-        pass
+        function_map = {
+            1: self._1D,
+            2: self._2D,
+        }
+        return function_map[self.mesh.dimension]()
 
-    def extend_1d(self):
-        pass
+    def _1D(self):
+        raise NotImplementedError
 
-    def extend_2d(self):
-        pass
+    def _2D(self):
+        flattened_mesh = self.mesh.flatten(
+            origin=self.mesh.center, normal=self.orientation)
+
+        boundary = flattened_mesh.boundary()
+
+        ray_direction = self.direction.project(self.orientation)
+
+        import pdb
+        pdb.set_trace()
 
 
 class Copy(Filter):
