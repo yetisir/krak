@@ -45,15 +45,17 @@ class Vector(np.ndarray):
 
     def project(self, destination):
 
-        if destination is Position or destination is Direction:
-            return self._vector_projection(destination)
-        elif destination is Orientation:
-            return self._plane_projection(destination)
-        elif destination is Line:
+        if isinstance(destination, Vector):
+            if isinstance(destination, Orientation):
+                return self._plane_projection(destination)
+            else:
+                return self._vector_projection(destination)
+
+        elif isinstance(destination, Line):
             return Line(
                 origin=destination.origin,
                 direction=self >> destination.direction)
-        elif destination is Plane:
+        elif isinstance(destination, Plane):
             return Line(
                 origin=destination.origin,
                 direction=self >> destination.orientation)
@@ -105,10 +107,15 @@ class Direction(Vector):
         return Direction(vector=self, flip=True)
 
 
+# class Displacement(Direction):
+#     def __init__(self, distance, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+
 class Orientation(Direction):
     def __new__(
             cls, normal=None, pole=None, strike=None, dip=None,
-            dip_direction=None, plunge=None, trend=None, flip=True):
+            dip_direction=None, plunge=None, trend=None, flip=False):
         assert (
             (normal is not None or pole is not None) or
             (strike is not None and dip is not None) or

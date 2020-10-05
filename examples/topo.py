@@ -14,3 +14,8 @@ geology = krak.examples.random_hills()
 #     'sandstone',
 #     range=select.PositionX(0, None),
 #     slot='geology')
+
+geology = geology.extend((11, 0, 0),)
+geology = geology.extend((-11, 0, 0))
+geology = geology.extend((0, 11, 0))
+geology = geology.extend((0, -11, 0))

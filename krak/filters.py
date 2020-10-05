@@ -39,7 +39,7 @@ class Transform:
 class Translate(Filter, Transform):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, mesh, distance=None, direction=(0, 0, 1)):
+    def __init__(self, mesh, direction=(0, 0, 1), distance=None):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction)
         if distance is not None:
@@ -216,21 +216,21 @@ class Merge(Filter):
 
 
 class Extrude(Filter):
-    dimensions = [0, 1, 2]
+    dimensions = [0, 1]  # , 2] TODO: add 2d to 3d extrusion
 
-    def __init__(self, mesh, direction=(0, 0, 1), distance=1):
+    def __init__(self, mesh, direction=(0, 0, 1), distance=None):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
 
     def filter(self):
-        pass
-        # TODO: proper extrusion
+        mesh = self.mesh.pyvista.extract_surface().extrude(self.direction)
+        return self.mesh.mesh_class(offset=1)(mesh, parents=[self.mesh])
 
 
 class ExtrudeSurface(Filter):
     dimensions = [2]
 
-    def __init__(self, mesh, direction=(0, 0, 1), distance=0):
+    def __init__(self, mesh, direction=(0, 0, 1), distance=None):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
 
@@ -279,11 +279,21 @@ class Extend(Filter):
     dimensions = [1, 2]
 
     def __init__(
-            self, mesh, direction=(0, 0, 1), distance=0, orientation=None):
+            self, mesh, direction=(0, 0, 1), distance=None, orientation=None,
+            snap_to_axis=True, tolerance=1e-6):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
+        self.tolerance = tolerance
+
         if orientation is None:
             orientation = mesh.orientation
+
+        if snap_to_axis:
+            snapped_orientation = [0, 0, 0]
+            argmax = np.argmax(np.abs(orientation))
+            snapped_orientation[argmax] = 1
+            orientation = snapped_orientation
+
         self.orientation = spatial.Orientation(normal=orientation)
 
     def filter(self):
@@ -301,11 +311,43 @@ class Extend(Filter):
             origin=self.mesh.center, normal=self.orientation)
 
         boundary = flattened_mesh.boundary()
+        size = self.mesh.size_magnitude
+        thick_boundary = boundary.translate(
+            direction=self.orientation,
+            distance=size/20
+        ).extrude(self.orientation.flip().scale(size/10))
 
-        ray_direction = self.direction.project(self.orientation)
+        ray_direction = self.direction >> self.orientation
 
-        import pdb
-        pdb.set_trace()
+        obb_tree = vtk.vtkOBBTree()
+        obb_tree.SetDataSet(thick_boundary.pyvista.extract_surface())
+        obb_tree.BuildLocator()
+
+        points = boundary.points
+        cells = boundary.cells
+
+        intersection_points = vtk.vtkPoints()
+        intersection_cell_ids = vtk.vtkIdList()
+
+        intersection_counts = []
+        for point_id, point in points.iterrows():
+            source = spatial.Position(point) + ray_direction.unit * size / 1e6
+            target = source + ray_direction.unit * size
+            obb_tree.IntersectWithLine(
+                source, target, intersection_points, intersection_cell_ids)
+            intersection_counts.append(intersection_cell_ids.GetNumberOfIds())
+
+        remove_points = points[
+            np.array(intersection_counts) != 0]
+        cells = cells[(~cells.isin(remove_points.index)).all(axis=1)]
+
+        leading_boundary = self.mesh.load_lines(
+            self.mesh.boundary().points.values, cells.values)
+        extension = leading_boundary.extrude(direction=self.direction)
+
+        mesh = self.mesh.merge(extension)
+
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
 
 
 class Copy(Filter):

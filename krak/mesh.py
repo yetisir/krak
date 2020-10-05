@@ -212,6 +212,14 @@ class Mesh(MeshFilters, ABC):
         return np.array(self.pyvista.bounds).reshape((3, 2))
 
     @property
+    def size(self):
+        return self.bounds[:, 1] - self.bounds[:, 0]
+
+    @property
+    def size_magnitude(self):
+        return np.linalg.norm(self.size)
+
+    @property
     def center(self):
         return self.pyvista.center
 
@@ -261,7 +269,10 @@ class Mesh(MeshFilters, ABC):
         # self.pyvista.plot(*args, **kwargs)
 
     def save(self, file_name):
-        self.pyvista.save(file_name)
+        if file_name.endswith('dxf'):
+            to_dxf(self, file_name)
+        else:
+            self.pyvista.save(file_name)
 
     def _remove_invalid_cells(self):
         invalid_cell_indices = [
@@ -298,6 +309,18 @@ class SurfaceMesh(Mesh):
 
     def _to_pymesh(self):
         return pymesh.form_mesh(self.points.values, self.cells.values)
+
+    @staticmethod
+    def load_mesh(*args, **kwargs):
+        return load_mesh(*args, **kwargs)
+
+    @staticmethod
+    def load_points(*args, **kwargs):
+        return load_points(*args, **kwargs)
+
+    @staticmethod
+    def load_lines(*args, **kwargs):
+        return load_lines(*args, **kwargs)
 
 
 class VolumeMesh(Mesh):
@@ -398,6 +421,10 @@ def from_dxf(file_name):
     return mesh
 
 
+def to_dxf(pyvista_mesh, file_name):
+    pass
+
+
 def to_pyvista(unknown_mesh):
     if isinstance(unknown_mesh, str):
         if unknown_mesh.endswith('dxf'):
@@ -437,3 +464,19 @@ def load_mesh(mesh, dimension=None):
                 'Cannot determine dimension')
 
     return Map.dimension_classes[dimension](pv_mesh)
+
+
+def load_points(points):
+    return load_mesh(pyvista.PolyData(np.array(points)))
+
+
+def load_lines(points, connectivity):
+    cells = []
+    for cell in connectivity:
+        cells.append(len(cell))
+        cells.extend(cell)
+
+    pv_mesh = pyvista.PolyData()
+    pv_mesh.points = np.array(points)
+    pv_mesh.lines = np.array(cells)
+    return load_mesh(pv_mesh, dimension=1)
