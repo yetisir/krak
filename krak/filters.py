@@ -51,7 +51,7 @@ class Translate(Filter, Transform):
         transformed_mesh = self.transform(transform, self.mesh)
 
         return self.mesh.mesh_class()(
-            transformed_mesh, parents=[self.mesh]).clean()
+            transformed_mesh, parents=[self.mesh])
 
 
 class TranslateX(Translate):
@@ -86,7 +86,7 @@ class Rotate(Filter, Transform):
 
         transformed_mesh = self.transform(transform, self.mesh)
         return self.mesh.mesh_class()(
-            transformed_mesh, parents=[self.mesh]).clean()
+            transformed_mesh, parents=[self.mesh])
 
 
 class RotateX(Rotate):
@@ -120,7 +120,7 @@ class Scale(Filter, Transform):
         transformed_mesh = self.transform(transform, self.mesh)
 
         return self.mesh.mesh_class()(
-            transformed_mesh, parents=[self.mesh]).clean()
+            transformed_mesh, parents=[self.mesh])
 
 
 class ScaleX(Scale):
@@ -142,7 +142,7 @@ class Clip(Filter):
     dimensions = [0, 1, 2, 3]
 
     def __init__(
-            self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False):
+            self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False, closed=False):
         super().__init__(mesh)
         origin = origin or mesh.center
 
@@ -152,32 +152,78 @@ class Clip(Filter):
             plane = spatial.Plane(origin=origin, normal=normal)
         self.plane = plane
 
+        self.closed = closed
+
     def filter(self):
         mesh = self.mesh.pyvista.clip(
             normal=self.plane.normal, origin=self.plane.origin)
 
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
+        clipped = self.mesh.mesh_class()(mesh, parents=[self.mesh])
 
+        if not self.closed:
+            return clipped
 
-class ClipClosed(Clip):
-    dimensions = [2]
+        if not self.mesh.manifold:
+            raise ValueError(
+                'Cannot close surface on non-manifold surface')
 
-    def filter(self):
-        plane = self.plane.flip()
-        vtk_plane = vtk.vtkPlane()
-        vtk_plane.SetOrigin(plane.origin)
-        vtk_plane.SetNormal(plane.orientation)
-
-        plane_collection = vtk.vtkPlaneCollection()
-        plane_collection.AddItem(vtk_plane)
-
-        clipper = vtk.vtkClipClosedSurface()
-        clipper.SetClippingPlanes(plane_collection)
-        clipper.SetInputData(self.mesh.pyvista.extract_surface())
-        clipper.Update()
+        caps = self._caps(clipped)
 
         return self.mesh.mesh_class()(
-            clipper.GetOutput(), parents=[self.mesh]).clean()
+            caps.merge(clipped.pyvista.extract_surface()), parents=[self.mesh])
+
+    def _caps(self, mesh):
+        boundaries = mesh.clean().boundary().pyvista.split_bodies()
+
+        caps = None
+
+        for boundary in boundaries:
+            boundary = mesh.load_mesh(boundary)
+            points = self._order_points(boundary.cells)
+
+            vtk_points = vtk.vtkPoints()
+            polygon = vtk.vtkPolygon()
+            polygon.GetPointIds().SetNumberOfIds(len(points))
+
+            for i, point in enumerate(points):
+                vtk_points.InsertPoint(i, boundary.points.loc[point].values)
+                polygon.GetPointIds().SetId(i, i)
+
+            polygon_list = vtk.vtkCellArray()
+            polygon_list.InsertNextCell(polygon)
+
+            cap = vtk.vtkPolyData()
+            cap.SetPoints(vtk_points)
+            cap.SetPolys(polygon_list)
+
+            cap = pyvista.wrap(cap).triangulate()
+
+            if caps is None:
+                caps = cap
+            else:
+                caps = caps.merge(cap)
+
+        return caps
+
+    def _order_points(self, edges):
+
+        ordered_points = edges.loc[0].to_list()
+        edges = edges.drop(0)
+
+        while len(edges):
+            start = ordered_points[-1]
+            connected_edge = edges[(edges == start).any(axis=1)]
+            end = [i for i in connected_edge.iloc[0] if i != start]
+            ordered_points.extend(end)
+            edges = edges.drop(connected_edge.index)
+
+        return ordered_points
+
+
+# class SurfaceClip(Clip):
+#     dimensions = [2]
+
+#     def filter(self):
 
 
 class Flatten(Filter):
@@ -198,21 +244,20 @@ class Flatten(Filter):
 class Merge(Filter):
     dimensions = [0, 1, 2, 3]
 
-    def __init__(self, *meshes):
-        super().__init__(meshes[0])
-        dimensions = [mesh.dimension for mesh in meshes]
-        if len(set(dimensions)) > 1:
+    def __init__(self, mesh, other, merge_points=False):
+        super().__init__(mesh)
+        if mesh.dimension != other.dimension:
             raise ValueError(
                 'Merge only possible for meshes of same dimension')
 
-        self.meshes = meshes
+        self.other = other
+        self.merge_points = merge_points
 
     def filter(self):
-        merged_mesh = self.meshes[0].pyvista
-        for mesh in self.meshes[1:]:
-            merged_mesh = merged_mesh.merge(mesh.pyvista)
+        merged_mesh = self.mesh.pyvista.merge(
+            self.other.pyvista, merge_points=self.merge_points)
 
-        return self.meshes[0].mesh_class()(merged_mesh, parents=[self.meshes])
+        return self.mesh.mesh_class()(merged_mesh, parents=[self.mesh])
 
 
 class Extrude(Filter):
@@ -236,15 +281,18 @@ class ExtrudeSurface(Filter):
 
     def filter(self):
         mesh = self.mesh.pyvista.extract_surface().extrude(self.direction)
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
 
 
 class Triangulate(Filter):
     dimensions = [2]
 
     def filter(self):
-        mesh = self.mesh.pyvista.extract_surface().triangulate()
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
+        triangle_filter = vtk.vtkTriangleFilter()
+        triangle_filter.SetInputData(self.mesh.pyvista.extract_surface())
+        triangle_filter.Update()
+        return self.mesh.mesh_class()(
+            pyvista.wrap(triangle_filter.GetOutput()), parents=[self.mesh])
 
 
 class Split(Filter):
@@ -280,10 +328,13 @@ class Extend(Filter):
 
     def __init__(
             self, mesh, direction=(0, 0, 1), distance=None, orientation=None,
-            snap_to_axis=True, tolerance=1e-6):
+            snap_to_axis=True, tolerance=1e-6, orientation_filter=0.3,
+            quality_filter=0.01):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
         self.tolerance = tolerance
+        self.orientation_filter = orientation_filter
+        self.quality_filter = quality_filter
 
         if orientation is None:
             orientation = mesh.orientation
@@ -331,7 +382,8 @@ class Extend(Filter):
 
         intersection_counts = []
         for point_id, point in points.iterrows():
-            source = spatial.Position(point) + ray_direction.unit * size / 1e6
+            source = spatial.Position(
+                point) + ray_direction.unit * size * self.tolerance
             target = source + ray_direction.unit * size
             obb_tree.IntersectWithLine(
                 source, target, intersection_points, intersection_cell_ids)
@@ -341,13 +393,28 @@ class Extend(Filter):
             np.array(intersection_counts) != 0]
         cells = cells[(~cells.isin(remove_points.index)).all(axis=1)]
 
-        leading_boundary = self.mesh.load_lines(
-            self.mesh.boundary().points.values, cells.values)
+        leading_boundary = self.mesh.mesh_class(offset=-1)(
+            self.mesh.boundary().pyvista.extract_cells(cells.index.values))
+
         extension = leading_boundary.extrude(direction=self.direction)
 
-        mesh = self.mesh.merge(extension)
+        orthogonality = extension.normals.dot(self.orientation).abs()
+        quality = (
+            extension.pyvista.extract_surface().compute_cell_quality()[
+                'CellQuality'])
 
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
+        valid_cells = orthogonality[
+            (orthogonality > self.orientation_filter) &
+            (quality > self.quality_filter)
+        ]
+
+        filtered_extension = self.mesh.mesh_class()(
+            extension.pyvista.extract_surface().extract_cells(
+                valid_cells.index.values))
+
+        mesh = self.mesh.merge(filtered_extension).clean()
+
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
 
 
 class Copy(Filter):
@@ -373,7 +440,7 @@ class TetrahedralMesh(Filter):
         # TODO: check if watertight
         # TODO: replace with CGAL to avoid AGPL
         tetrahedralizer = tetgen.TetGen(
-            self.mesh.clean().pyvista.extract_surface())
+            self.mesh.pyvista.extract_surface())
         tetrahedralizer.make_manifold()
         tetrahedralizer.tetrahedralize(**self.kwargs)
         return self.mesh.mesh_class(offset=1)(
@@ -391,7 +458,7 @@ class VoxelMesh(Filter):
 
     def filter(self):
         voxelized_mesh = pyvista.voxelize(
-            self.mesh.clean().pyvista, **self.kwargs)
+            self.mesh.pyvista, **self.kwargs)
         return self.mesh.mesh_class(offset=1)(
             voxelized_mesh, parents=[self.mesh])
 
@@ -401,7 +468,11 @@ class Boundary(Filter):
 
     def filter(self):
         boundary = self.mesh.pyvista.extract_feature_edges(
-            manifold_edges=False, feature_edges=False)
+            boundary_edges=True,
+            manifold_edges=False,
+            feature_edges=False,
+            non_manifold_edges=False,
+        )
         return self.mesh.mesh_class(dimension=1)(boundary, parents=[self.mesh])
 
 
@@ -456,7 +527,7 @@ class Remesh(Filter):
 
             num_vertices = mesh.num_vertices
 
-        return self.mesh.mesh_class()(mesh, parents=[self.mesh]).clean()
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
 
 
 class CellEdges(Filter):

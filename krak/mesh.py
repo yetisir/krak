@@ -87,6 +87,26 @@ class Mesh(MeshFilters, ABC):
     def dimension(self):
         raise NotImplementedError
 
+    @staticmethod
+    def load_mesh(*args, **kwargs):
+        return load_mesh(*args, **kwargs)
+
+    @staticmethod
+    def load_points(*args, **kwargs):
+        return load_points(*args, **kwargs)
+
+    @staticmethod
+    def load_lines(*args, **kwargs):
+        return load_lines(*args, **kwargs)
+
+    @staticmethod
+    def load_surfaces(*args, **kwargs):
+        return load_surfaces(*args, **kwargs)
+
+    @staticmethod
+    def load_volumes(*args, **kwargs):
+        return load_volumes(*args, **kwargs)
+
     @property
     def cells(self):
         # TODO: use meshios maps instead of iterating through vtk
@@ -95,7 +115,7 @@ class Mesh(MeshFilters, ABC):
 
         cell_iterator = self.pyvista.NewCellIterator()
         cell_connectivity = self.pyvista.cells
-        for _ in range(self.pyvista.n_cells):
+        for _ in range(self.pyvista.number_of_cells):
             end_index = start_index + cell_iterator.GetNumberOfPoints()
             cell_list_connectivity.append(
                 cell_connectivity[start_index:end_index])
@@ -275,10 +295,16 @@ class Mesh(MeshFilters, ABC):
             self.pyvista.save(file_name)
 
     def _remove_invalid_cells(self):
+        if not self.pyvista.number_of_cells:
+            return self
         invalid_cell_indices = [
             i for i, cell_type in enumerate(self.pyvista.celltypes)
             if cell_type not in self.supported_cell_types]
         self.pyvista.remove_cells(invalid_cell_indices)
+
+
+class NullMesh(Mesh):
+    dimension = None
 
 
 class PointMesh(Mesh):
@@ -293,12 +319,22 @@ class SurfaceMesh(Mesh):
     dimension = 2
 
     @property
+    def normals(self):
+        surface = self.pyvista.extract_surface()
+        normals = surface.compute_normals(
+            cell_normals=True, point_normals=False)
+        return pandas.DataFrame(
+            normals['Normals'],
+            columns=['x', 'y', 'z'],
+            index=pandas.RangeIndex(surface.number_of_cells)
+        )
+
+    @property
     def manifold(self):
-        raise NotImplementedError
+        return not bool(self.boundary().pyvista.number_of_cells)
 
     @property
     def watertight(self):
-        # alias for manifold
         return self.manifold
 
     @property
@@ -309,18 +345,6 @@ class SurfaceMesh(Mesh):
 
     def _to_pymesh(self):
         return pymesh.form_mesh(self.points.values, self.cells.values)
-
-    @staticmethod
-    def load_mesh(*args, **kwargs):
-        return load_mesh(*args, **kwargs)
-
-    @staticmethod
-    def load_points(*args, **kwargs):
-        return load_points(*args, **kwargs)
-
-    @staticmethod
-    def load_lines(*args, **kwargs):
-        return load_lines(*args, **kwargs)
 
 
 class VolumeMesh(Mesh):
@@ -480,3 +504,19 @@ def load_lines(points, connectivity):
     pv_mesh.points = np.array(points)
     pv_mesh.lines = np.array(cells)
     return load_mesh(pv_mesh, dimension=1)
+
+
+def load_surfaces(points, connectivity):
+    cells = []
+    for cell in connectivity:
+        cells.append(len(cell))
+        cells.extend(cell)
+
+    import pdb
+    pdb.set_trace()
+    pv_mesh = pyvista.PolyData(np.array(points), np.array(cells))
+    return load_mesh(pv_mesh, dimension=2)
+
+
+def load_volumes(points, element_type, connectivity):
+    raise NotImplementedError
