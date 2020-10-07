@@ -229,15 +229,18 @@ class Mesh(MeshFilters, ABC):
 
     @property
     def bounds(self):
-        return np.array(self.pyvista.bounds).reshape((3, 2))
+        return pandas.DataFrame(
+            np.array(self.pyvista.bounds).reshape((3, 2)),
+            index=['x', 'y', 'z'],
+            columns=['min', 'max'])
 
     @property
     def size(self):
-        return self.bounds[:, 1] - self.bounds[:, 0]
+        return self.bounds['max'] - self.bounds['min']
 
     @property
     def size_magnitude(self):
-        return np.linalg.norm(self.size)
+        return np.linalg.norm(self.size.values)
 
     @property
     def center(self):
@@ -330,6 +333,20 @@ class SurfaceMesh(Mesh):
         )
 
     @property
+    def cell_areas(self):
+        surface = self.pyvista.extract_surface()
+        areas = surface.compute_cell_sizes(
+            length=False,
+            area=True,
+            volume=False,
+        )
+        return pandas.DataFrame(
+            areas['Area'],
+            columns=['Area'],
+            index=pandas.RangeIndex(surface.number_of_cells)
+        )
+
+    @property
     def manifold(self):
         return not bool(self.boundary().pyvista.number_of_cells)
 
@@ -339,9 +356,34 @@ class SurfaceMesh(Mesh):
 
     @property
     def orientation(self):
-        normals = self.pyvista.extract_surface().compute_normals(
-            cell_normals=True, point_normals=False)['Normals']
-        return spatial.Orientation(normal=normals.mean(axis=0))
+        return spatial.Orientation(self.oriented_axes[-1])
+
+    @property
+    def oriented_axes(self):
+        # There should be a more efficient way to calculate the OBB
+        obb_tree = vtk.vtkOBBTree()
+        obb_tree.SetDataSet(self.pyvista.extract_surface())
+        obb_tree.BuildLocator()
+
+        obb_surface = vtk.vtkPolyData()
+        obb_tree.GenerateRepresentation(0, obb_surface)
+
+        mesh = self.load_mesh(obb_surface)
+        normals = mesh.normals.values
+        areas = mesh.cell_areas['Area'].values
+
+        all_normals = []
+        for normal, area in zip(normals, areas):
+            normal = spatial.Direction(normal).scale(area)
+            if normal[0] < 0:
+                normal = normal.flip()
+
+            if normal not in all_normals:
+                all_normals.append(normal)
+
+        sorted_normals = sorted(
+            all_normals, key=lambda normal: normal.magnitude)
+        return [normal.unit for normal in sorted_normals]
 
     def _to_pymesh(self):
         return pymesh.form_mesh(self.points.values, self.cells.values)
@@ -512,8 +554,6 @@ def load_surfaces(points, connectivity):
         cells.append(len(cell))
         cells.extend(cell)
 
-    import pdb
-    pdb.set_trace()
     pv_mesh = pyvista.PolyData(np.array(points), np.array(cells))
     return load_mesh(pv_mesh, dimension=2)
 

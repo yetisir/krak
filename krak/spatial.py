@@ -20,9 +20,27 @@ class Vector(np.ndarray):
     def __lshift__(self, other):
         return other.project(self)
 
+    def __eq__(self, other):
+        try:
+            other = Vector(other)
+        except TypeError:
+            return False
+
+        if np.sign(self[0]) != np.sign(other[0]):
+            return False
+
+        if not np.isclose(self.magnitude, other.magnitude):
+            return False
+
+        if not np.isclose(self.unit * other.unit, 1):
+            return False
+
+        return True
+
     def scale(self, size):
         if size is None:
             return self
+
         return self.__class__(self.unit * size)
 
     @property
@@ -108,7 +126,7 @@ class Direction(Vector):
 
 
 # class Displacement(Direction):
-#     def __init__(self, distance, *args, **kwargs):
+#     def __init__(self, distance=None, *args, **kwargs):
 #         super().__init__(*args, **kwargs)
 
 

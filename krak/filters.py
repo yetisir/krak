@@ -142,7 +142,8 @@ class Clip(Filter):
     dimensions = [0, 1, 2, 3]
 
     def __init__(
-            self, mesh, plane=None, origin=None, normal=(0, 0, 1), flip=False, closed=False):
+            self, mesh, surface=None, bounds=None, plane=None, origin=None,
+            normal=(0, 0, 1), flip=False, closed=False):
         super().__init__(mesh)
         origin = origin or mesh.center
 
@@ -153,6 +154,15 @@ class Clip(Filter):
         self.plane = plane
 
         self.closed = closed
+
+        if surface is not None:
+            # TODO: implement surface clipping
+            raise NotImplementedError
+        if bounds is not None:
+            # TODO: implement bounds clipping
+            raise NotImplementedError
+        self.surface = surface
+        self.bounds = bounds
 
     def filter(self):
         mesh = self.mesh.pyvista.clip(
@@ -220,17 +230,13 @@ class Clip(Filter):
         return ordered_points
 
 
-# class SurfaceClip(Clip):
-#     dimensions = [2]
-
-#     def filter(self):
-
-
 class Flatten(Filter):
     dimensions = [0, 1, 2]
 
-    def __init__(self, mesh, plane=None, origin=(0, 0, 0), normal=(0, 0, 1)):
+    def __init__(self, mesh, plane=None, origin=None, normal=(0, 0, 1)):
         super().__init__(mesh)
+        if origin is None:
+            origin = mesh.center
         if plane is None:
             plane = spatial.Plane(origin=origin, normal=normal)
         self.plane = plane
@@ -303,8 +309,7 @@ class Split(Filter):
 
     def filter(self):
         # TODO: finish splitting algorithm
-        mesh = self.mesh.flatten()
-        return self.mesh.mesh_class()(mesh)
+        raise NotImplementedError
 
 
 class Clean(Filter):
@@ -328,7 +333,7 @@ class Extend(Filter):
 
     def __init__(
             self, mesh, direction=(0, 0, 1), distance=None, orientation=None,
-            snap_to_axis=True, tolerance=1e-6, orientation_filter=0.3,
+            snap_to_axis=True, tolerance=1e-6, orientation_filter=0.5,
             quality_filter=0.01):
         super().__init__(mesh)
         self.direction = spatial.Direction(direction).scale(distance)
@@ -357,9 +362,8 @@ class Extend(Filter):
     def _1D(self):
         raise NotImplementedError
 
-    def _2D(self):
-        flattened_mesh = self.mesh.flatten(
-            origin=self.mesh.center, normal=self.orientation)
+    def _get_leading_boundary(self):
+        flattened_mesh = self.mesh.flatten(normal=self.orientation)
 
         boundary = flattened_mesh.boundary()
         size = self.mesh.size_magnitude
@@ -388,31 +392,69 @@ class Extend(Filter):
             obb_tree.IntersectWithLine(
                 source, target, intersection_points, intersection_cell_ids)
             intersection_counts.append(intersection_cell_ids.GetNumberOfIds())
-
         remove_points = points[
             np.array(intersection_counts) != 0]
         cells = cells[(~cells.isin(remove_points.index)).all(axis=1)]
 
-        leading_boundary = self.mesh.mesh_class(offset=-1)(
+        return self.mesh.mesh_class(offset=-1)(
             self.mesh.boundary().pyvista.extract_cells(cells.index.values))
+
+    def _2D(self):
+
+        leading_boundary = self._get_leading_boundary()
+        orientation = self.orientation
+        flat_boundary = leading_boundary.flatten(normal=orientation)
+        flat_boundary_points = flat_boundary.points
+
+        ids = []
+        dp = []
+        for line_id, line_conectivity in flat_boundary.cells.iterrows():
+            start = flat_boundary_points.loc[line_conectivity[0]].values
+            end = flat_boundary_points.loc[line_conectivity[1]].values
+            direction = spatial.Direction(start - end)
+
+            orientation_diff = np.abs((
+                (direction >> orientation).unit *
+                (self.direction >> orientation).unit))
+            if orientation_diff < self.orientation_filter:
+                ids.append(line_id)
+                dp.append(orientation_diff)
+
+        leading_boundary = self.mesh.load_mesh(
+            leading_boundary.pyvista.extract_cells(ids))
 
         extension = leading_boundary.extrude(direction=self.direction)
 
-        orthogonality = extension.normals.dot(self.orientation).abs()
-        quality = (
-            extension.pyvista.extract_surface().compute_cell_quality()[
-                'CellQuality'])
+        mesh = self.mesh.merge(extension).clean()
 
-        valid_cells = orthogonality[
-            (orthogonality > self.orientation_filter) &
-            (quality > self.quality_filter)
+        return self.mesh.mesh_class()(mesh, parents=[self.mesh])
+
+
+class Expand(Filter):
+    dimensions = [2]
+
+    def __init__(self, mesh, distance):
+        super().__init__(mesh)
+        self.distance = distance
+
+    def filter(self):
+        primary_extension, orthogonal_extension, orientation = (
+            self.mesh.oriented_axes)
+
+        extrusions = [
+            primary_extension.flip(),
+            primary_extension,
+            orthogonal_extension.flip(),
+            orthogonal_extension,
         ]
 
-        filtered_extension = self.mesh.mesh_class()(
-            extension.pyvista.extract_surface().extract_cells(
-                valid_cells.index.values))
-
-        mesh = self.mesh.merge(filtered_extension).clean()
+        mesh = self.mesh
+        for extrusion in extrusions:
+            mesh = mesh.extend(
+                orientation=orientation,
+                direction=extrusion,
+                distance=self.distance,
+                snap_to_axis=False)
 
         return self.mesh.mesh_class()(mesh, parents=[self.mesh])
 
@@ -503,10 +545,9 @@ class Remesh(Filter):
         self.tolerance = tolerance
 
         if size_absolute is None:
-            bbox_diff = [bound[1] - bound[0] for bound in mesh.bounds]
-            size_absolute = np.linalg.norm(bbox_diff) * size_relative
+            size_absolute = mesh.size_magnitude * size_relative
 
-        self.size_absolute = size_absolute
+        self.size = size_absolute
 
     def filter(self):
         mesh = pymesh.form_mesh(
@@ -514,11 +555,11 @@ class Remesh(Filter):
 
         mesh, _ = pymesh.remove_degenerated_triangles(
             mesh, self.max_iterations)
-        mesh, _ = pymesh.split_long_edges(mesh, self.size_absolute)
+        mesh, _ = pymesh.split_long_edges(mesh, self.size)
         num_vertices = mesh.num_vertices
         for _ in range(self.max_iterations):
             mesh, _ = pymesh.collapse_short_edges(
-                mesh, self.size_absolute, preserve_feature=True)
+                mesh, self.size, preserve_feature=True)
             mesh, _ = pymesh.remove_obtuse_triangles(
                 mesh, self.max_angle, self.max_iterations)
 
