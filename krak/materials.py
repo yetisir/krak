@@ -79,12 +79,14 @@ class Elastic():
 class MohrCoulomb(strength_models.MohrCoulomb, Elastic):
     name = 'mohr-coulomb'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+    def __init__(self, friction, cohesion, tension=None, dilation=None):
+        super().__init__(
+            phi=friction, c=cohesion, sigma_t=tension)
+        self.dilation = dilation
 
 
 class HoekBrown(strength_models.HoekBrown, Elastic):
     name = 'hoek-brown'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)

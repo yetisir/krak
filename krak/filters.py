@@ -143,7 +143,7 @@ class Clip(Filter):
 
     def __init__(
             self, mesh, surface=None, bounds=None, plane=None, origin=None,
-            normal=(0, 0, 1), flip=False, closed=False):
+            normal=(0, 0, -1), flip=False, closed=False):
         super().__init__(mesh)
         origin = origin or mesh.center
 

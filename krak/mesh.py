@@ -27,6 +27,9 @@ class MeshFilters:
             self.filters[filter_name] = filter
             self.add_filter(filter, filter_name)
 
+    def __hash__(self):
+        return hash(str(self.serialize()))
+
     @property
     @abstractmethod
     def dimension(self):
@@ -144,7 +147,7 @@ class Mesh(MeshFilters, ABC):
     def faces(self):
         pass
 
-    def _get_groups(self, component):
+    def _get_component_arrays(self, component):
         if component == 'cells':
             component_arrays = self.pyvista.cell_arrays
             length = len(self.cells)
@@ -152,9 +155,17 @@ class Mesh(MeshFilters, ABC):
             component_arrays = self.pyvista.point_arrays
             length = len(self.points)
 
+        else:
+            raise ValueError(f'Unrecognized component type "{component}"')
+
+        return component_arrays, length
+
+    def _get_groups(self, component):
+        component_arrays, length = self._get_component_arrays(component)
+
         slots = [
             slot for slot in component_arrays.keys()
-            if slot.split(':')[0] == 'slot']
+            if slot.split(':')[0] == f'slot']
         groups = {
             ':'.join(slot.split(':')[1:]): component_arrays[slot]
             for slot in slots}
@@ -162,13 +173,8 @@ class Mesh(MeshFilters, ABC):
             groups,
             index=pandas.RangeIndex(length, name=f'{component[:-1]}_id'))
 
-    def _add_group(self, component, group, range, slot):
-        if component == 'cells':
-            component_arrays = self.pyvista.cell_arrays
-            length = len(self.cells)
-        elif component == 'points':
-            component_arrays = self.pyvista.point_arrays
-            length = len(self.points)
+    def _add_group(self, component, group, slot, range):
+        component_arrays, length = self._get_component_arrays(component)
 
         array_name = f'slot:{slot}'
         dtype = f'<U{len(group)}'
@@ -184,40 +190,80 @@ class Mesh(MeshFilters, ABC):
 
         component_arrays[array_name] = array
 
+    def _get_fields(self, component):
+        component_arrays, length = self._get_component_arrays(component)
+
+        names = [
+            name for name in component_arrays.keys()
+            if slot.split(':')[0] == f'field']
+        fields = {
+            ':'.join(name.split(':')[1:]): component_arrays[name]
+            for name in names}
+        return pandas.DataFrame(
+            fields,
+            index=pandas.RangeIndex(length, name=f'{component[:-1]}_id'))
+
+    def _add_field(self, component, values, name, range):
+        component_arrays, length = self._get_component_arrays(component)
+
+        array_name = f'field:{name}'
+
+        if array_name in component_arrays.keys():
+            array = component_arrays[array_name]
+        else:
+            array = np.empty(length)
+
+        array[range.query(self, component)] = values
+
+        component_arrays[array_name] = array
+
     @property
     def cell_groups(self):
         return self._get_groups('cells')
 
-    def add_cell_group(self, group, range=select.All(), slot='default'):
+    def set_cell_group(self, group, range=select.All(), slot='default'):
         self._add_group('cells', group=group, range=range, slot=slot)
+
+    @property
+    def cell_fields(self):
+        return self._get_fields('cells')
+
+    def set_cell_field(self, values, name, range):
+        self._add_field('cells', values=values, name=name, range=range)
+
+    def query_cell_field(self, name, location):
+        pass
 
     @property
     def point_groups(self):
         return self._get_groups('points')
 
-    def add_point_group(self, group, range=select.All(), slot='default'):
+    def set_point_group(self, group, range=select.All(), slot='default'):
         self._add_group(
             'points', group=group, range=range, slot=slot)
 
     @property
-    def face_groups(self):
-        pass
+    def point_fields(self):
+        return self._get_fields('points')
 
-    def add_face_group(self, range, slot=0):
+    def set_point_fields(self, name, values, range):
+        self._add_field('points', values=values, name=name, range=range)
+
+    def query_point_field(self, name, location):
         pass
 
     @property
     def materials(self):
         pass
 
-    def add_material(self):
+    def set_material(self, material, range):
         pass
 
     @property
     def boundary_conditions(self):
         pass
 
-    def add_boundary_conditions(self):
+    def set_boundary_condition(self, type, range):
         pass
 
     @property
@@ -279,12 +325,6 @@ class Mesh(MeshFilters, ABC):
                 key: value.tolist() for key, value
                 in self.pyvista.cell_arrays.items()},
         }
-
-    def cell_to_point(self):
-        pass
-
-    def point_to_cell(self):
-        pass
 
     def plot(self, **kwargs):
         plotter = viewer.Window().plotter
@@ -391,6 +431,13 @@ class SurfaceMesh(Mesh):
 
 class VolumeMesh(Mesh):
     dimension = 3
+
+    @property
+    def face_groups(self):
+        pass
+
+    def add_face_group(self, range, slot=0):
+        pass
 
 
 class Map:

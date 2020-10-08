@@ -1,4 +1,5 @@
 import numpy as np
+import pint
 
 
 class Vector(np.ndarray):
@@ -9,7 +10,7 @@ class Vector(np.ndarray):
         return np.array(vector).view(cls)
 
     def __mul__(self, other):
-        return np.dot(self, other)
+        return np.dot(self, other * 1)
 
     def __pow__(self, other):
         return self.__class__(np.cross(self, other))
