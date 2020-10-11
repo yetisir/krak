@@ -1,13 +1,14 @@
 import pint
 
-from . import utils, units, spatial, constants
+from . import utils, units, spatial, constants, unit_systems
 
 
 class Settings(metaclass=utils.Singleton):
     def __init__(self):
-        self._units = units.SI()
+        self._units = unit_systems.SI()
         self._gravity = spatial.Direction(
             [0, 0, -1]) * constants.gravitational_acceleration
+        self._water_density = constants.water_density
 
     @property
     def units(self):
@@ -44,6 +45,7 @@ class Settings(metaclass=utils.Singleton):
     @gravity_magnitude.setter
     def gravity_magnitude(self, value):
         if isinstance(value, pint.Quantity):
+            assert self.units.acceleration.dimensionality == value.units.dimensionality
             units = value.units
             value = value.magnitude
         else:
@@ -57,10 +59,26 @@ class Settings(metaclass=utils.Singleton):
 
     @gravity.setter
     def gravity(self, value):
+        value, units = self._validate_units(value, 'acceleration')
+        self._gravity = spatial.Direction(value) * units
+
+    @property
+    def water_density(self):
+        return self.water_density
+
+    @water_density.setter
+    def water_density(self, value):
+        value, units = self._validate_units(value, 'density')
+        self._water_density = value * units
+
+    def _validate_units(self, value, type):
+        reference_units = getattr(self.units, type)
+
         if isinstance(value, pint.Quantity):
+            assert reference_units.dimensionality == value.units.dimensionality
             units = value.units
             value = value.magnitude
         else:
-            units = self.units.acceleration
+            units = reference_units
 
-        self._gravity = spatial.Direction(value) * units
+        return units, value

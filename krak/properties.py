@@ -1,12 +1,18 @@
+from . import units, settings
+
+
 class Property():
-    pass
+    def __init__(self, value, units):
+        pass
 
 
 class Density(Property):
-    def __init__(self, value, unit):
-        units = {
-
-        }
+    def __init__(self, value, units=None):
+        if units is None:
+            units = settings.units.density
+        else:
+            assert settings.units.density.dimensionality == units.dimensionality
+        super().__init__(units)
 
 
 class ShearModulus(Property):

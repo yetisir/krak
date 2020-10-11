@@ -41,6 +41,19 @@ def validate_positive(value, parameter):
     return float_value
 
 
+# def parse_quantity(value, units=None):
+#     if units is None:
+#         units =
+
+#     if isinstance(value, pint.Quantity):
+#         if units is None:
+#             return value
+
+#         return pint.Quantity(value.magnitude, units)
+
+#     return pint.Quantity(value, units)
+
+
 class Singleton(type):
     _instances = {}
 

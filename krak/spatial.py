@@ -1,5 +1,4 @@
 import numpy as np
-import pint
 
 
 class Vector(np.ndarray):

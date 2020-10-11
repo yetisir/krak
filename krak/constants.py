@@ -1,7 +1,6 @@
-from . import units
+from . import unit_systems
 
-_si_units = units.SI()
+_si_units = unit_systems.SI()
 
-gravitational_acceleration = (
-    9.80665 * _si_units.acceleration
-)
+gravitational_acceleration = 9.81 * _si_units.acceleration
+water_density = 1e3 * _si_units.density
