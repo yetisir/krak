@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from . import strength_models, utils
+from . import strength, utils
 
 
 class Base(ABC):
@@ -76,7 +76,7 @@ class Elastic():
         return young / (3.0 * (1.0 - 2 * poisson))
 
 
-class MohrCoulomb(strength_models.MohrCoulomb, Elastic):
+class MohrCoulomb(strength.MohrCoulomb, Elastic):
     name = 'mohr-coulomb'
 
     def __init__(self, friction, cohesion, tension=None, dilation=None):
@@ -85,7 +85,7 @@ class MohrCoulomb(strength_models.MohrCoulomb, Elastic):
         self.dilation = dilation
 
 
-class HoekBrown(strength_models.HoekBrown, Elastic):
+class HoekBrown(strength.HoekBrown, Elastic):
     name = 'hoek-brown'
 
     def __init__(self, *args, **kwargs):

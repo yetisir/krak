@@ -62,3 +62,6 @@ class Settings(metaclass=utils.Singleton):
     @water_density.setter
     def water_density(self, value):
         self._water_density = utils.parse_quantity(value, self.units.density)
+
+
+settings = Settings()

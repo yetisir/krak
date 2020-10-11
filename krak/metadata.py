@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
-from . import select, utils
+from . import select, utils, units, config
 
 
 class DataType(ABC):
@@ -50,27 +50,32 @@ class Metadata(ABC):
         self.prefix = prefix
         self.dtype = dtype
 
+        self._array_units = {}
+
     def __repr__(self):
-        return repr(self.dataframe)
+        return repr(self.data())
 
     def __getitem__(self, keys):
         name, selection = self._validate_index_keys(keys)
-        return self.dataframe[name][
+
+        return self.data(name)[
             selection.query(self._mesh_binding(), self.component)]
 
     def __setitem__(self, keys, value):
         value = utils.parse_quantity(value)
-        # TODO: handle units
-        # units.convert_to_base(value)
-        #units_str = f'{value.units:~}'
+        value = units.SI().convert(value)
+
         name, selection = self._validate_index_keys(keys)
         array_name = f'{self.prefix}:{name}'
 
         data_arrays = self.data_arrays
 
         if array_name in data_arrays.keys():
+            if value.units != self._array_units[array_name]:
+                raise ValueError(f'Incompatible units for "{keys[0]}"')
             array = self.dtype.cast_array(data_arrays[array_name])
         else:
+            self._array_units[array_name] = value.units
             array = self.dtype.get_empty_array(self.length, value.magnitude)
 
         array[selection.query(self._mesh_binding(),
@@ -110,18 +115,30 @@ class Metadata(ABC):
     def bind(self, mesh_binding):
         self._mesh_binding = mesh_binding
 
-    @property
-    def dataframe(self):
+    def data(self, name=None):
         data_arrays = self.data_arrays
 
-        columns = [
-            name for name in data_arrays.keys()
-            if name.split(':')[0] == f'{self.prefix}']
-        data = {
-            ':'.join(column.split(':')[1:]): data_arrays[column]
-            for column in columns}
-        return pd.DataFrame(
+        data = {}
+        for column in data_arrays.keys():
+            prefix, *column_name = column.split(':')
+            if prefix != f'{self.prefix}':
+                continue
+            column_name = ':'.join(column_name)
+
+            array = config.settings.units.convert(
+                data_arrays[column] * self._array_units[column])
+            units = f'{array.units:~}'
+            index = f'{column_name} [{units}]'
+            data[index] = array.magnitude
+            if name == column_name:
+                break
+
+        dataframe = pd.DataFrame(
             data, index=pd.RangeIndex(self.length, name='id'))
+        if name is None:
+            return dataframe
+        else:
+            return dataframe[index]
 
 
 class CellMetadata(Metadata):

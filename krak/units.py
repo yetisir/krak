@@ -1,7 +1,5 @@
 import pint
 
-units = pint.UnitRegistry()
-
 
 class UnitSystem:
     def __init__(self, length, mass, time):
@@ -37,51 +35,70 @@ class UnitSystem:
     def power(self):
         return self.energy / self.time
 
+    def convert(self, quantity):
+        if not isinstance(quantity, pint.Quantity):
+            raise TypeError(f'Unrecognized quantity "{quantity}"')
+
+        return quantity.to(self._get_base_units(quantity.units))
+
+    def _get_base_units(self, units):
+        base_units = pint.Unit('')
+        for dimension, order in units.dimensionality.items():
+            base_units = base_units * (getattr(self, dimension[1:-1]) ** order)
+        return base_units
+
     def _validate_unit(self, unit, type):
         if isinstance(unit, str):
             try:
-                unit = getattr(units, unit)
+                unit = pint.Unit(unit)
             except pint.errors.UndefinedUnitError:
                 raise ValueError(f'Unrecognized unit {unit}')
+        if not isinstance(unit, pint.Unit):
+            raise TypeError(f'Unrecognized unit type {unit}')
 
         dimensionality = pint.util.UnitsContainer({f'[{type}]': 1})
         if unit.dimensionality != dimensionality:
             raise ValueError(
-                f'Incorrect unit dimensionality {unit.dimensionality}'
-                f' for unit {unit}')
+                f'Incorrect unit dimensionality "{unit.dimensionality}" '
+                f'for unit "{unit}"')
 
         return unit
+
+
+class SI(UnitSystem):
+    def __init__(self):
+        super().__init__(
+            length='meter',
+            mass='kilogram',
+            time='second',
+        )
 
 
 class MKS(UnitSystem):
     def __init__(self):
         super().__init__(
-            length=units.meter,
-            mass=units.kilogram,
-            time=units.second,
-        )
-
-
-class US(UnitSystem):
-    def __init__(self):
-        super().__init__(
-            length=units.foot,
-            mass=units.slug,
-            time=units.second,
+            length='meter',
+            mass='kilogram',
+            time='second',
         )
 
 
 class CGS(UnitSystem):
     def __init__(self):
         super().__init__(
-            length=units.centimeter,
-            mass=units.gram,
-            time=units.second,
+            length='centimeter',
+            mass='gram',
+            time='second',
         )
 
 
-class SI(MKS):
-    pass
+class US(UnitSystem):
+    def __init__(self):
+        super().__init__(
+            length='foot',
+            mass='slug',
+            time='second',
+        )
 
 
 def parse(unit):

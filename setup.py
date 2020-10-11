@@ -15,6 +15,8 @@ setup(
         'tetgen>=0.4',
         'pandas>=1.0',
         'twisted>=20.3',
+        'pint>=0.16',
+        'pint-pandas>=0.1',
     ],
     extras_require={
         'dev': [
