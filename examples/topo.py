@@ -11,28 +11,15 @@ clipped = extrusion.clip(origin=(0, 0, -10), closed=True)
 mesh = clipped.voxel_mesh()
 
 geology = krak.examples.random_hills().expand(10)
-mesh.set_cell_group(
-    group='limestone',
-    slot='geology',
-    range=select.All(),
-)
-
-mesh.set_cell_group(
-    group=krak.Group(name='limestone', slot=geology)
-    range=select.All()
-)
-
-cell_group = mesh.get_cell_group(name, slot)
-
-mesh.cell_groups.add(krak.group(name))
-
 mesh.cell_groups['geology', select.All()] = 'monzonite'
 mesh.cell_groups['geology', select.Bottom()] = 'limestone'
 mesh.cell_groups['lithology', select.Group(
     'monzonite', slot='geology')] = 'monzonite'
 
 
-mesh.properties['shear', select.All()] = 1e-6
+mesh.properties['shear', select.All()] = 1e-6 * krak.unit('MPa')
+mesh.cell_fields['elevation'] = 10 * krak.unit('m')
+mesh.cell_fields['elevation'] = 10 * krak.unit('m/s')
 
 mesh.cell_fields['elevation', select.Top()] = 1e-6
 

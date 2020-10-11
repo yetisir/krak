@@ -33,10 +33,10 @@ class MeshFilters:
         raise NotImplementedError
 
     def _all_filters(self, cls):
-        return set(cls.__subclasses__()).union(
-            [
-                subclass for filter_class in cls.__subclasses__() for
-                subclass in self._all_filters(filter_class)])
+        return set(cls.__subclasses__()).union([
+            subclass for filter_class in cls.__subclasses__() for
+            subclass in self._all_filters(filter_class)
+        ])
 
     def add_filter(self, filter, name):
         setattr(

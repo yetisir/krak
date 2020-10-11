@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
-from . import select
+from . import select, utils
 
 
 class DataType(ABC):
@@ -59,6 +59,10 @@ class Metadata(ABC):
             selection.query(self._mesh_binding(), self.component)]
 
     def __setitem__(self, keys, value):
+        value = utils.parse_quantity(value)
+        # TODO: handle units
+        # units.convert_to_base(value)
+        #units_str = f'{value.units:~}'
         name, selection = self._validate_index_keys(keys)
         array_name = f'{self.prefix}:{name}'
 
@@ -67,9 +71,10 @@ class Metadata(ABC):
         if array_name in data_arrays.keys():
             array = self.dtype.cast_array(data_arrays[array_name])
         else:
-            array = self.dtype.get_empty_array(self.length, value)
+            array = self.dtype.get_empty_array(self.length, value.magnitude)
 
-        array[selection.query(self._mesh_binding(), self.component)] = value
+        array[selection.query(self._mesh_binding(),
+                              self.component)] = value.magnitude
         data_arrays[array_name] = array
 
     @property

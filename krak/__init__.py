@@ -1,10 +1,8 @@
-from .connect import send
 import atexit
-import pint
 
-units = pint.UnitRegistry()
-
-from . import tools, examples, config  # noqa
+from . import tools, examples, config, units, spatial  # noqa
+from .connect import send
+from .units import parse as unit  # noqa
 from .mesh import load_mesh, load_points, load_lines  # noqa
 
 settings = config.Settings()

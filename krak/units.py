@@ -53,7 +53,7 @@ class UnitSystem:
         return unit
 
 
-class SI(UnitSystem):
+class MKS(UnitSystem):
     def __init__(self):
         super().__init__(
             length=units.meter,
@@ -69,3 +69,23 @@ class US(UnitSystem):
             mass=units.slug,
             time=units.second,
         )
+
+
+class CGS(UnitSystem):
+    def __init__(self):
+        super().__init__(
+            length=units.centimeter,
+            mass=units.gram,
+            time=units.second,
+        )
+
+
+class SI(MKS):
+    pass
+
+
+def parse(unit):
+    try:
+        return pint.Unit(unit)
+    except pint.errors.UndefinedUnitError:
+        raise ValueError(f'Unit "{unit}" not recognized')

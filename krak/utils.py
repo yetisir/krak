@@ -1,6 +1,8 @@
 import sys
 import functools
 
+import pint
+
 
 def cli_args(function):
     @functools.wraps(function)
@@ -41,17 +43,25 @@ def validate_positive(value, parameter):
     return float_value
 
 
-# def parse_quantity(value, units=None):
-#     if units is None:
-#         units =
+def parse_quantity(value, default_units=None):
+    if isinstance(value, pint.Unit):
+        value = 1 * value
+    elif not isinstance(value, pint.Quantity):
+        value = pint.Quantity(value, '')
 
-#     if isinstance(value, pint.Quantity):
-#         if units is None:
-#             return value
+    if default_units is None:
+        return value
 
-#         return pint.Quantity(value.magnitude, units)
+    if not isinstance(default_units, pint.Unit):
+        raise ValueError(f'Invalid default unit "{default_units}" provided')
 
-#     return pint.Quantity(value, units)
+    if value.dimensionless:
+        value = value * default_units
+
+    if value.dimensionality != default_units.dimensionality:
+        raise ValueError(f'Invalid unit "{value.units}" provided')
+
+    return value
 
 
 class Singleton(type):

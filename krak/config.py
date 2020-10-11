@@ -1,11 +1,9 @@
-import pint
-
-from . import utils, units, spatial, constants, unit_systems
+from . import utils, units, spatial, constants
 
 
 class Settings(metaclass=utils.Singleton):
     def __init__(self):
-        self._units = unit_systems.SI()
+        self._units = units.SI()
         self._gravity = spatial.Direction(
             [0, 0, -1]) * constants.gravitational_acceleration
         self._water_density = constants.water_density
@@ -20,9 +18,9 @@ class Settings(metaclass=utils.Singleton):
             try:
                 value = getattr(units, value)()
             except AttributeError:
-                raise ValueError('Unrecognized unit system name "{value}"')
+                raise ValueError(f'Unrecognized unit system name "{value}"')
         if not isinstance(value, units.UnitSystem):
-            raise ValueError('Unrecognized unit system "{value}"')
+            raise ValueError(f'Unrecognized unit system "{value}"')
         self._units = value
 
     @property
@@ -31,8 +29,6 @@ class Settings(metaclass=utils.Singleton):
 
     @gravity_direction.setter
     def gravity_direction(self, value):
-        import pdb
-        pdb.set_trace()
         self._gravity = (
             spatial.Direction(value).scale(self.gravity_magnitude) *
             self.units.acceleration
@@ -44,14 +40,10 @@ class Settings(metaclass=utils.Singleton):
 
     @gravity_magnitude.setter
     def gravity_magnitude(self, value):
-        if isinstance(value, pint.Quantity):
-            assert self.units.acceleration.dimensionality == value.units.dimensionality
-            units = value.units
-            value = value.magnitude
-        else:
-            units = self.units.acceleration
-
-        self._gravity = self._gravity.magnitude.scale(value) * units
+        value = utils.parse_quantity(
+            value, default_units=self.units.acceleration)
+        self._gravity = self._gravity.magnitude.scale(
+            value.magnitude) * value.units
 
     @property
     def gravity(self):
@@ -59,26 +51,14 @@ class Settings(metaclass=utils.Singleton):
 
     @gravity.setter
     def gravity(self, value):
-        value, units = self._validate_units(value, 'acceleration')
-        self._gravity = spatial.Direction(value) * units
+        value = utils.parse_quantity(
+            value, default_units=self.units.acceleration)
+        self._gravity = spatial.Direction(value.magnitude) * value.units
 
     @property
     def water_density(self):
-        return self.water_density
+        return self._water_density
 
     @water_density.setter
     def water_density(self, value):
-        value, units = self._validate_units(value, 'density')
-        self._water_density = value * units
-
-    def _validate_units(self, value, type):
-        reference_units = getattr(self.units, type)
-
-        if isinstance(value, pint.Quantity):
-            assert reference_units.dimensionality == value.units.dimensionality
-            units = value.units
-            value = value.magnitude
-        else:
-            units = reference_units
-
-        return units, value
+        self._water_density = utils.parse_quantity(value, self.units.density)
