@@ -220,10 +220,10 @@ class Mesh(MeshFilters, ABC):
         }
 
     def plot(
-            self, slot=None, field=None, property=None,
+            self, set=None, field=None, property=None,
             boundary_condition=None, **kwargs):
-        if slot is not None:
-            scalars = f'slot:{slot}'
+        if set is not None:
+            scalars = f'set:{set}'
         elif field is not None:
             scalars = f'field:{field}'
         elif property is not None:

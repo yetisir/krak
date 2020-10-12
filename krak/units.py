@@ -1,4 +1,12 @@
 import pint
+import pint_pandas
+
+registry = pint.UnitRegistry()
+pint_pandas.PintType.ureg = registry
+
+
+class Unit(registry.Unit):
+    pass
 
 
 class UnitSystem:
@@ -36,13 +44,16 @@ class UnitSystem:
         return self.energy / self.time
 
     def convert(self, quantity):
-        if not isinstance(quantity, pint.Quantity):
+        if quantity.dimensionless:
+            return quantity
+
+        if not isinstance(quantity, registry.Quantity):
             raise TypeError(f'Unrecognized quantity "{quantity}"')
 
         return quantity.to(self._get_base_units(quantity.units))
 
     def _get_base_units(self, units):
-        base_units = pint.Unit('')
+        base_units = Unit('')
         for dimension, order in units.dimensionality.items():
             base_units = base_units * (getattr(self, dimension[1:-1]) ** order)
         return base_units
@@ -50,10 +61,10 @@ class UnitSystem:
     def _validate_unit(self, unit, type):
         if isinstance(unit, str):
             try:
-                unit = pint.Unit(unit)
+                unit = Unit(unit)
             except pint.errors.UndefinedUnitError:
                 raise ValueError(f'Unrecognized unit {unit}')
-        if not isinstance(unit, pint.Unit):
+        if not isinstance(unit, Unit):
             raise TypeError(f'Unrecognized unit type {unit}')
 
         dimensionality = pint.util.UnitsContainer({f'[{type}]': 1})
@@ -99,10 +110,3 @@ class US(UnitSystem):
             mass='slug',
             time='second',
         )
-
-
-def parse(unit):
-    try:
-        return pint.Unit(unit)
-    except pint.errors.UndefinedUnitError:
-        raise ValueError(f'Unit "{unit}" not recognized')

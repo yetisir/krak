@@ -1,7 +1,9 @@
 import sys
 import functools
 
-import pint
+import pandas as pd
+
+from . import units
 
 
 def cli_args(function):
@@ -44,15 +46,22 @@ def validate_positive(value, parameter):
 
 
 def parse_quantity(value, default_units=None):
-    if isinstance(value, pint.Unit):
+    if isinstance(value, pd.Series):
+        array = value.values
+        try:
+            value = array.quantity
+        except TypeError:
+            value = units.registry.Quantity(array, '')
+
+    if isinstance(value, units.registry.Unit):
         value = 1 * value
-    elif not isinstance(value, pint.Quantity):
-        value = pint.Quantity(value, '')
+    elif not isinstance(value, units.registry.Quantity):
+        value = units.registry.Quantity(value, '')
 
     if default_units is None:
         return value
 
-    if not isinstance(default_units, pint.Unit):
+    if not isinstance(default_units, units.registry.Unit):
         raise ValueError(f'Invalid default unit "{default_units}" provided')
 
     if value.dimensionless:

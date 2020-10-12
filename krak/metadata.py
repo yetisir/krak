@@ -20,23 +20,16 @@ class DataType(ABC):
     def parse_value(self, value):
         raise NotImplementedError
 
-    @property
-    @abstractmethod
-    def units(self):
-        raise NotImplementedError
-
     def get_empty_array(self, length, value):
         return np.empty(length, dtype=self.get_dtype(value.magnitude))
 
 
 class String(DataType):
-    units = False
-
     def get_dtype(self, value):
         return f'<U{self.length(value)}'
 
     def length(self, value):
-        if isinstance(value, pint.Quantity):
+        if isinstance(value, units.registry.Quantity):
             value = value.magnitude
 
         if isinstance(value, str):
@@ -57,12 +50,12 @@ class String(DataType):
             return array
 
     def parse_value(self, value):
-        return pint.Quantity(value, '')
+        if isinstance(value, pd.Series):
+            value = value.values
+        return units.registry.Quantity(value, '')
 
 
 class Float(DataType):
-    units = True
-
     def get_dtype(self, value):
         return 'float'
 
@@ -88,12 +81,12 @@ class Metadata(ABC):
         self._array_units = {}
 
     def __repr__(self):
-        return repr(self.data())
+        return repr(self.dataframe.pint.dequantify())
 
     def __getitem__(self, keys):
         name, selection = self._validate_index_keys(keys)
 
-        return self.data(name)[
+        return self.dataframe[name][
             selection.query(self._mesh_binding(), self.component)]
 
     def __setitem__(self, keys, value):
@@ -110,8 +103,8 @@ class Metadata(ABC):
 
     def _create_array(self, array_name, value, selection):
         array = self.dtype.get_empty_array(self.length, value)
-        array[selection.query(
-            self._mesh_binding(), self.component)] = value.magnitude
+        selection_mask = selection.query(self._mesh_binding(), self.component)
+        array[selection_mask] = value.magnitude
         self.data_arrays[array_name] = array
         self._array_units[array_name] = value.units
 
@@ -125,8 +118,8 @@ class Metadata(ABC):
             raise ValueError(f'Incompatible units for "{value}"')
 
         array = self.dtype.cast_array(data_arrays[array_name], value)
-        array[selection.query(
-            self._mesh_binding(), self.component)] = value.magnitude
+        selection_mask = selection.query(self._mesh_binding(), self.component)
+        array[selection_mask] = value.magnitude
         data_arrays[array_name] = array
 
     @property
@@ -162,7 +155,8 @@ class Metadata(ABC):
     def bind(self, mesh_binding):
         self._mesh_binding = mesh_binding
 
-    def data(self, name=None):
+    @property
+    def dataframe(self):
         data_arrays = self.data_arrays
 
         data = {}
@@ -172,24 +166,17 @@ class Metadata(ABC):
                 continue
             column_name = ':'.join(column_name)
 
-            if not self.dtype.units:
-                data[f'{column_name}'] = data_arrays[column]
+            if not self._array_units[column]:
+                data[column_name] = pd.Series(data_arrays[column])
                 continue
 
             array = config.settings.units.convert(
                 data_arrays[column] * self._array_units[column])
             units = f'{array.units:~}'
-            index = f'{column_name} [{units}]'
-            data[index] = array.magnitude
-            if name == column_name:
-                break
+            data[column_name] = pd.Series(
+                array.magnitude, dtype=f'pint[{units}]')
 
-        dataframe = pd.DataFrame(
-            data, index=pd.RangeIndex(self.length, name='id'))
-        if name is None:
-            return dataframe
-        else:
-            return dataframe[index]
+        return pd.DataFrame(data, index=pd.RangeIndex(self.length, name='id'))
 
 
 class CellMetadata(Metadata):

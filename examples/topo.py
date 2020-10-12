@@ -11,8 +11,8 @@ clipped = extrusion.clip(origin=(0, 0, -10), closed=True)
 mesh = clipped.voxel_mesh()
 
 geology = krak.examples.random_hills().expand(10)
-mesh.cell_groups['geology', select.All()] = 'monzonite'
-mesh.cell_groups['geology', select.Distance(geology, 5)] = 'limestone'
+mesh.cell_sets['geology', select.All()] = 'limestone'
+mesh.cell_sets['geology', select.Distance(geology, 5)] = 'monzonite'
 
 
 # mesh.properties['shear', select.All()] = 1e-6 * krak.unit('MPa')
