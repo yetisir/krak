@@ -39,12 +39,6 @@ mesh.cell_sets['geology', select.Distance(geology, 5)] = 'monzonite'
 # limestone = materials.MohrCoulomb(
 #     density=15, bulk=5e6, shear=2e6,
 #     friction_angle=35, dilation_angle=15, cohesion=2e4)
-
-# mesh.set_material(
-#     material=limestone, range=select.Group(group='limestone', slot='geology'))
-# mesh.set_material(
-#     material=monzonite, range=select.Group(group='monzonite', slot='geology'))
-
 # mesh.set_property(
 #     property=krak.ShearModulus(1e6), range=select.All()
 # )
