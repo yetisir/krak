@@ -2,45 +2,80 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
+import pint
 
 from . import select, utils, units, config
 
 
 class DataType(ABC):
     @abstractmethod
-    def get_dtype(self):
+    def get_dtype(self, value):
         raise NotImplementedError
 
     @abstractmethod
-    def cast_array(self):
+    def cast_array(self, array, value):
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_value(self, value):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def units(self):
         raise NotImplementedError
 
     def get_empty_array(self, length, value):
-        return np.empty(length, dtype=self.get_dtype(value))
+        return np.empty(length, dtype=self.get_dtype(value.magnitude))
 
 
 class String(DataType):
+    units = False
+
     def get_dtype(self, value):
         return f'<U{self.length(value)}'
 
     def length(self, value):
+        if isinstance(value, pint.Quantity):
+            value = value.magnitude
+
         if isinstance(value, str):
             return len(value)
         else:
-            return max(len(i) for i in value)
+            try:
+                return max(len(i) for i in value)
+            except TypeError:
+                return 8
 
     def cast_array(self, array, value):
         if self.length(value) > array.dtype.itemsize // array.dtype.alignment:
-            return np.array(array, dtype=self.get_dtype(value))
+            try:
+                return np.array(array, dtype=self.get_dtype(value))
+            except TypeError:
+                raise TypeError('Unsupported type for metadata')
         else:
             return array
 
+    def parse_value(self, value):
+        return pint.Quantity(value, '')
+
 
 class Float(DataType):
+    units = True
+
     def get_dtype(self, value):
         return 'float'
 
     def cast_array(self, array, value):
+        return array
+
+    def parse_value(self, value):
+        value = utils.parse_quantity(value)
+        return units.SI().convert(value)
+
+    def get_empty_array(self, length, value):
+        array = super().get_empty_array(length, value)
+        array[:] = np.nan
         return array
 
 
@@ -62,24 +97,36 @@ class Metadata(ABC):
             selection.query(self._mesh_binding(), self.component)]
 
     def __setitem__(self, keys, value):
-        value = utils.parse_quantity(value)
-        value = units.SI().convert(value)
+        value = self.dtype.parse_value(value)
 
         name, selection = self._validate_index_keys(keys)
+
         array_name = f'{self.prefix}:{name}'
 
+        if array_name in self.data_arrays.keys():
+            self._update_array(array_name, value, selection)
+        else:
+            self._create_array(array_name, value, selection)
+
+    def _create_array(self, array_name, value, selection):
+        array = self.dtype.get_empty_array(self.length, value)
+        array[selection.query(
+            self._mesh_binding(), self.component)] = value.magnitude
+        self.data_arrays[array_name] = array
+        self._array_units[array_name] = value.units
+
+    def _update_array(self, array_name, value, selection):
         data_arrays = self.data_arrays
 
-        if array_name in data_arrays.keys():
-            if value.units != self._array_units[array_name]:
-                raise ValueError(f'Incompatible units for "{keys[0]}"')
-            array = self.dtype.cast_array(data_arrays[array_name])
-        else:
+        if isinstance(selection, select.All):
             self._array_units[array_name] = value.units
-            array = self.dtype.get_empty_array(self.length, value.magnitude)
 
-        array[selection.query(self._mesh_binding(),
-                              self.component)] = value.magnitude
+        if value.units != self._array_units[array_name]:
+            raise ValueError(f'Incompatible units for "{value}"')
+
+        array = self.dtype.cast_array(data_arrays[array_name], value)
+        array[selection.query(
+            self._mesh_binding(), self.component)] = value.magnitude
         data_arrays[array_name] = array
 
     @property
@@ -124,6 +171,10 @@ class Metadata(ABC):
             if prefix != f'{self.prefix}':
                 continue
             column_name = ':'.join(column_name)
+
+            if not self.dtype.units:
+                data[f'{column_name}'] = data_arrays[column]
+                continue
 
             array = config.settings.units.convert(
                 data_arrays[column] * self._array_units[column])

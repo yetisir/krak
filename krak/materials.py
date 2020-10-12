@@ -4,6 +4,10 @@ from . import strength, utils
 
 
 class Base(ABC):
+    properties = {
+        'density': properties.Density,
+    }
+
     def __init__(self, density):
         self.density = density
 
@@ -15,10 +19,15 @@ class Base(ABC):
 
 class Null(Base):
     name = 'null'
+    properties = {}
 
 
 class Elastic():
     name = 'elastic'
+    properties = {
+        'bulk': properties.Bulk,
+        'shear': properties.ShearModulus
+    }
 
     def __init__(self, bulk=None, shear=None, poisson=None, young=None):
         bulk, shear = self._get_elastic_parameters(

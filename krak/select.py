@@ -60,8 +60,17 @@ class Group(BaseRange):
         pass
 
 
-class Id(BaseRange):
-    pass
+class Ids(BaseRange):
+    def __init__(self, ids):
+        self.ids = ids
+
+    def query(self, mesh, component):
+        if component == 'cells':
+            ids = mesh.cells.index
+        elif component == 'points':
+            ids = mesh.points.index
+
+        return ids.to_series().isin(self.ids).values
 
 
 class CoordinateRange(BaseRange):
