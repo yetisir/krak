@@ -75,14 +75,14 @@ class Mesh(MeshFilters, ABC):
         if register:
             self._registry.append(self)
 
-        self.cell_groups = metadata.CellGroups(
+        self.cell_sets = metadata.CellSets(
             mesh_binding=self._binding)
         self.cell_fields = metadata.CellFields(
             mesh_binding=self._binding)
         self.properties = metadata.Properties(
             mesh_binding=self._binding)
 
-        self.point_groups = metadata.PointGroups(
+        self.point_sets = metadata.PointSets(
             mesh_binding=self._binding)
         self.point_fields = metadata.PointFields(
             mesh_binding=self._binding)
@@ -219,9 +219,21 @@ class Mesh(MeshFilters, ABC):
                 in self.pyvista.cell_arrays.items()},
         }
 
-    def plot(self, **kwargs):
+    def plot(
+            self, slot=None, field=None, property=None,
+            boundary_condition=None, **kwargs):
+        if slot is not None:
+            scalars = f'slot:{slot}'
+        elif field is not None:
+            scalars = f'field:{field}'
+        elif property is not None:
+            scalars = f'property:{property}'
+        elif boundary_condition is not None:
+            scalars = f'bc:{boundary_condition}'
+        else:
+            scalars = None
         plotter = viewer.Window().plotter
-        plotter.add_mesh(self.pyvista, *kwargs)
+        plotter.add_mesh(self.pyvista, scalars=scalars, **kwargs)
         # self.pyvista.plot(*args, **kwargs)
 
     def save(self, file_name):
@@ -324,13 +336,6 @@ class SurfaceMesh(Mesh):
 
 class VolumeMesh(Mesh):
     dimension = 3
-
-    @property
-    def face_groups(self):
-        pass
-
-    def add_face_group(self, range, slot=0):
-        pass
 
 
 class Map:

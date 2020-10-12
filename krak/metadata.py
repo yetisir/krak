@@ -221,9 +221,9 @@ class Properties(CellMetadata):
         super().__init__('property', **kwargs)
 
 
-class CellGroups(CellMetadata):
+class CellSets(CellMetadata):
     def __init__(self, **kwargs):
-        super().__init__('slot', dtype=String(), **kwargs)
+        super().__init__('set', dtype=String(), **kwargs)
 
 
 class CellFields(CellMetadata):
@@ -231,9 +231,9 @@ class CellFields(CellMetadata):
         super().__init__('field', **kwargs)
 
 
-class PointGroups(PointMetadata):
+class PointSets(PointMetadata):
     def __init__(self, **kwargs):
-        super().__init__('slot', dtype=String(), **kwargs)
+        super().__init__('set', dtype=String(), **kwargs)
 
 
 class PointFields(PointMetadata):

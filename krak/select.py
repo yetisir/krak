@@ -55,7 +55,7 @@ class Null(BaseRange):
         pass
 
 
-class Group(BaseRange):
+class Set(BaseRange):
     def query(self, mesh, component):
         pass
 

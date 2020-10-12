@@ -3,37 +3,30 @@ from abc import ABC, abstractmethod
 import numpy as np
 from scipy import optimize
 
-from . import utils
+from . import utils, spatial
 
 
 class Base(ABC):
-    def normal_stress(self, sigma_3, sigma_1=None, derivative=None):
-        if sigma_1 is None:
-            sigma_1 = self.sigma_1_strength(sigma_3)
+    def normal_stress(self, sigma_3):
+        sigma_1 = self.sigma_1_strength(sigma_3)
+        derivative = self.derivative(sigma_3)
+        term_1 = ((sigma_1 + sigma_3) / 2.0) - ((sigma_1 - sigma_3) / 2.0)
+        term_2 = ((derivative - 1) / (derivative + 1))
 
-        if derivative is None:
-            derivative = self._envelope_derivative(sigma_3)
+        return term_1 * term_2
 
-        return (
-            ((sigma_1 + sigma_3) / 2.0) - ((sigma_1 - sigma_3) / 2.0) *
-            ((derivative - 1) / (derivative + 1))
-        )
-
-    def shear_strength(self, sigma_3, sigma_1=None, derivative=None):
-        if sigma_1 is None:
-            sigma_1 = self.sigma_1_strength(sigma_3)
-
-        if derivative is None:
-            derivative = self._envelope_derivative(sigma_3)
+    def shear_strength(self, sigma_3):
+        sigma_1 = self.sigma_1_strength(sigma_3)
+        derivative = self.derivative(sigma_3)
 
         return (sigma_1 - sigma_3) * (np.sqrt(derivative) / (derivative + 1))
 
     @abstractmethod
-    def sigma_1_strength(self, sig_3):
+    def sigma_1_strength(self, sigma_3):
         raise NotImplementedError
 
     @abstractmethod
-    def _envelope_derivative(self, sig_3):
+    def derivative(self, sigma_3):
         raise NotImplementedError
 
 
@@ -52,13 +45,11 @@ class MohrCoulomb(Base):
         return np.rad2deg(self._phi)
 
     def sigma_1_strength(self, sigma_3):
-        return (
-            (2 * self.c * np.cos(self._phi)) /
-            (1-np.sin(self._phi)) +
-            ((1 + np.sin(self._phi)) / (1 - np.sin(self._phi))) * sigma_3
-        )
+        term_1 = (2 * self.c * np.cos(self._phi)) / (1 - np.sin(self._phi))
+        term_2 = ((1 + np.sin(self._phi)) / (1 - np.sin(self._phi))) * sigma_3
+        return term_1 + term_2
 
-    def _envelope_derivative(self, sigma_3):
+    def derivative(self, sigma_3):
         return (1 + np.sin(self._phi)) / (1 - np.sin(self._phi))
 
 
@@ -131,7 +122,7 @@ class HoekBrown(Base):
 
         return sigma_3 + (self.sigma_ci * np.power(base, self.a))
 
-    def _envelope_derivative(self, sigma_3):
+    def derivative(self, sigma_3):
         base = (self.mb * (sigma_3 / self.sigma_ci) + self.s)
         if base < 0:
             return 0
@@ -179,26 +170,22 @@ class HoekBrown(Base):
         return numerator / denominator
 
     def equivalent_mc_exact(
-            self, sigma_3, sigma_1=None, correction_type='vertical'):
+            self, sigma_3, sigma_1=None, correction='vertical'):
 
         if sigma_1 is None:
             sigma_1 = self.sigma_1_strength(sigma_3)
 
-        if correction_type == 'vertical':
+        if correction == 'vertical':
             sigma_3 = sigma_3
-
-        elif correction_type == 'closest':
-            sigma_3 = self._correct_closest(sigma_3, sigma_1)
-
-        elif correction_type == 'hybrid':
+        elif correction == 'closest':
+            sigma_3 = self._find_closest(sigma_3, sigma_1)
+        elif correction == 'hybrid':
             if sigma_1 > self.sigma_1_strength(sigma_3):
-                sigma_3 = self._correct_closest(sigma_3, sigma_1)
-            else:
-                sigma_3 = sigma_3
+                sigma_3 = self._find_closest(sigma_3, sigma_1)
         else:
-            raise ValueError('invalid correction type specified')
+            raise ValueError('Unrecognized correction type')
 
-        derivative = self._envelope_derivative(sigma_3)
+        derivative = self.derivative(sigma_3)
         sigma_1 = self.sigma_1_strength(sigma_3)
 
         phi = np.rad2deg(
@@ -207,25 +194,26 @@ class HoekBrown(Base):
 
         return MohrCoulomb(c=c, phi=phi)
 
-    def _correct_closest(self, sigma_3, sigma_1):
+    def _find_closest(self, sigma_3, sigma_1):
 
-        def test_closest(trial_sigma_3, sigma_3, sigma_1):
-            trial_sigma_3 = trial_sigma_3[0]
+        def closest_point(trial_sigma_3, sigma_3, sigma_1):
+            reference_point = spatial.Direction([sigma_3, sigma_1, 0])
+            envelope_point = spatial.Direction(
+                [trial_sigma_3, self.sigma_1_strength(trial_sigma_3), 0])
 
-            derivative = self._envelope_derivative(trial_sigma_3)
-            trial_sig_1 = self.sigma_1_strength(trial_sigma_3)
-            v1 = np.array([1, derivative])
+            envelope_tangent = spatial.Direction(
+                [1, self.derivative(trial_sigma_3), 0])
 
-            if trial_sig_1 > 0:
-                v2 = np.array([sigma_3 - trial_sigma_3, sigma_1 - trial_sig_1])
+            if envelope_point[1] >= 0:
+                closest_direction = reference_point - envelope_point
+
+                return closest_direction.unit * envelope_tangent.unit
             else:
-                v2 = v1
+                # negative strength - so return max possiblie dot product of
+                # parallel unit vectors
+                return 1
 
-            v1 = v1 / np.linalg.norm(v1)
-            v2 = v2 / np.linalg.norm(v2)
-
-            return abs(np.dot(v1, v2))
-
-        closest_sigma_3 = optimize.fmin(test_closest, x0=sigma_3, args=(
-            sigma_3, sigma_1), ftol=0.1, disp=False)
+        closest_sigma_3 = optimize.fmin(
+            closest_point, x0=sigma_3, args=(sigma_3, sigma_1), ftol=0.1,
+            disp=False)
         return closest_sigma_3[0]

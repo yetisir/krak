@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from . import strength, utils
+from . import strength, utils, properties
 
 
 class Base(ABC):
@@ -25,7 +25,7 @@ class Null(Base):
 class Elastic():
     name = 'elastic'
     properties = {
-        'bulk': properties.Bulk,
+        'bulk': properties.BulkModulus,
         'shear': properties.ShearModulus
     }
 
