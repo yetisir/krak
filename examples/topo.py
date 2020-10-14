@@ -1,5 +1,5 @@
 import krak
-from krak import select, materials
+from krak import select  # , materials
 
 # krak.set_default_units(krak.units.SI())
 
