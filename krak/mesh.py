@@ -234,7 +234,6 @@ class Mesh(MeshFilters, ABC):
             scalars = None
         plotter = viewer.Window().plotter
         plotter.add_mesh(self.pyvista, scalars=scalars, **kwargs)
-        # self.pyvista.plot(*args, **kwargs)
 
     def save(self, file_name):
         if file_name.endswith('dxf'):
@@ -388,10 +387,10 @@ def cell_dimension(cell_type):
     return Map.cell_dimensions[cell_type]
 
 
-def create_mesh(points, cells, celltypes=None):
-    # TODO: more efficient
-    # TODO: add support for unstructured grids and points
-    return load_mesh(pymesh.form_mesh(points, cells))
+# def create_mesh(points, cells, celltypes=None):
+#     # TODO: more efficient
+#     # TODO: add support for unstructured grids and points
+#     return load_mesh(pymesh.form_mesh(points, cells))
 
 
 def from_dxf(file_name):

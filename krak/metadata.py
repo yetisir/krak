@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
+import pint_pandas
 
 from . import select, utils, units, config, materials
 
@@ -80,10 +81,18 @@ class Metadata(ABC):
         self._array_units = {}
 
     def __repr__(self):
-        dataframe = self.dataframe.pint.dequantify()
-        dataframe.columns = dataframe.columns.map(
-            lambda index: (index[0], '') if index[1] == 'dimensionless'
-            else (index[0], f'[{index[1]}]'))
+        dataframe = self.dataframe
+        columns = []
+        for column in dataframe.columns:
+            values = dataframe[column].values
+            if isinstance(values, pint_pandas.pint_array.PintArray):
+                units = dataframe[column].values.units
+                columns.append((column, f'[{units:~}]'))
+            else:
+                columns.append((column, ''))
+
+        dataframe.columns = pd.MultiIndex.from_tuples(
+            columns, names=('name', 'unit'))
         return repr(dataframe)
 
     def __getitem__(self, keys):
@@ -124,19 +133,19 @@ class Metadata(ABC):
         data_arrays = self.data_arrays
 
         data = {}
-        for column in data_arrays.keys():
+        for column, array_units in self._array_units.items():
             prefix, *column_name = column.split(':')
             if prefix != f'{self.prefix}':
                 continue
             column_name = ':'.join(column_name)
 
-            if self._array_units[column].dimensionless:
+            if array_units.dimensionless:
                 data[column_name] = pd.Series(
-                    data_arrays[column],  dtype=f'pint[dimensionless]')
+                    data_arrays[column])
                 continue
 
             array = config.settings.units.convert(
-                data_arrays[column] * self._array_units[column])
+                data_arrays[column] * array_units)
             units = f'{array.units:~}'
             data[column_name] = pd.Series(
                 array.magnitude, dtype=f'pint[{units}]')
@@ -217,21 +226,28 @@ class Properties(CellMetadata):
         name, selection = self._validate_index_keys(keys)
         array_name = f'{self.prefix}:{name}'
 
-        properties = self._get_available_properties()
-        if name in properties.keys():
-            value = properties[name](value).quantity
-            super().__setitem__(keys, value)
-
+        all_materials = self._available_materials()
         if name == 'model':
-            # TODO: check agains model names
+            if value not in all_materials.keys():
+                raise ValueError(f'Model name {value} not recognized')
             self.models[name, selection] = value
             self._array_units[array_name] = units.Unit('')
             return
 
-    def _get_available_properties(self):
-        properties = {}
+        properties = self._available_properties()
+        if name in properties.keys():
+            value = properties[name](value).quantity
+            super().__setitem__(keys, value)
+        else:
+            raise ValueError(f'Property name {name} not recognized')
+
+    def _available_materials(self):
         all_materials = utils.get_all_subclasses(materials.BaseMaterial)
-        for material in all_materials:
+        return {material.name: material for material in all_materials}
+
+    def _available_properties(self):
+        properties = {}
+        for material in self._available_materials().values():
             properties.update(material.property_types)
 
         return properties

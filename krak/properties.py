@@ -1,5 +1,9 @@
 import numbers
 
+import pandas as pd
+import numpy as np
+import pint_pandas
+
 from . import units, config
 
 
@@ -20,9 +24,14 @@ class Property:
     allowed_units = None
 
     def __init__(self, value):
-
         if isinstance(value, Property):
             value = value.value
+
+        if isinstance(value, pd.Series):
+            value = value.values
+
+        if isinstance(value, pint_pandas.pint_array.PintArray):
+            value = units.Quantity(value.data, value.units)
 
         quantity = self._parse_quantity(value)
         self.check_value(quantity)
@@ -35,7 +44,11 @@ class Property:
     def check_value(self, value):
         min_value = self._parse_quantity(self.min_value)
         max_value = self._parse_quantity(self.max_value)
-        if not (min_value <= value <= max_value):
+
+        condition = (value < min_value) | (value > max_value)
+        if not isinstance(condition, bool):
+            condition = condition.any()
+        if condition:
             raise ValueError(
                 f'{self.name} must be between {self.min_value} '
                 f'and {self.max_value}')
@@ -51,7 +64,10 @@ class Property:
             raise ValueError(
                 f'Incompatible unit "{unit}" for property "{self.name}"')
         if not isinstance(value, numbers.Number):
-            raise ValueError(f'Property "{self.name}" value must be numeric')
+            value = np.array(value)
+            if not np.issubdtype(value.dtype, np.number):
+                raise ValueError(
+                    f'Property "{self.name}" value must be numeric')
 
         if self.allowed_units is not None:
             if unit not in self.allowed_units:
