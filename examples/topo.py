@@ -1,5 +1,5 @@
 import krak
-from krak import select
+from krak import select, materials
 
 # krak.set_default_units(krak.units.SI())
 
@@ -13,6 +13,14 @@ mesh = clipped.voxel_mesh()
 geology = krak.examples.random_hills().expand(10)
 mesh.cell_sets['geology', select.All()] = 'limestone'
 mesh.cell_sets['geology', select.Distance(geology, 5)] = 'monzonite'
+
+mesh.properties['model'] = 'mohr-coulomb'
+
+# limestone = materials.Elastic(density=10, shear=1e6, bulk=2e6)
+
+# limestone.apply(mesh, range=select.All())
+# mesh.add_material(limestone, range=select.All())
+# mesh.add_
 
 
 # mesh.properties['shear', select.All()] = 1e-6 * krak.unit('MPa')

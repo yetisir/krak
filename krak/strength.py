@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from scipy import optimize
 
-from . import utils, spatial
+from . import utils, spatial, properties
 
 
 class Base(ABC):
@@ -31,18 +31,41 @@ class Base(ABC):
 
 
 class MohrCoulomb(Base):
-    def __init__(self, c, phi, sigma_t=None):
+    def __init__(self, c, phi, sigma_t=None, **kwargs):
+        super().__init__(**kwargs)
+        self.c = c
+        self.phi = phi
+        self.sigma_t = sigma_t
 
-        self.c = utils.validate_positive(c, 'c')
-        self.sigma_t = utils.validate_positive(sigma_t, 'sigma_t')
-        self._phi = np.deg2rad(utils.validate_positive(phi, 'phi'))
+    @property
+    def c(self):
+        return self._c
 
-        if self.sigma_t is None:
-            self.sigma_t = -(self.c / np.tan(self._phi))
+    @c.setter
+    def c(self, c):
+        self._c = properties.CohesiveStrength(c).quantity
+
+    @property
+    def sigma_t(self):
+        if self._sigma_t is None:
+            return -(self.c / np.tan(self._phi))
+        else:
+            return self._sigma_t
+
+    @sigma_t.setter
+    def sigma_t(self, sigma_t):
+        if sigma_t is None:
+            self._sigma_t = None
+        else:
+            self._sigma_t = properties.TensileStrength(sigma_t).quantity
 
     @property
     def phi(self):
-        return np.rad2deg(self._phi)
+        return self._phi.to('degrees')
+
+    @phi.setter
+    def phi(self, phi):
+        self._phi = properties.FrictionAngle(phi).quantity
 
     def sigma_1_strength(self, sigma_3):
         term_1 = (2 * self.c * np.cos(self._phi)) / (1 - np.sin(self._phi))

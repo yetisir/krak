@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
-import pint
 
-from . import select, utils, units, config
+from . import select, utils, units, config, materials
 
 
 class DataType(ABC):
@@ -81,7 +80,11 @@ class Metadata(ABC):
         self._array_units = {}
 
     def __repr__(self):
-        return repr(self.dataframe.pint.dequantify())
+        dataframe = self.dataframe.pint.dequantify()
+        dataframe.columns = dataframe.columns.map(
+            lambda index: (index[0], '') if index[1] == 'dimensionless'
+            else (index[0], f'[{index[1]}]'))
+        return repr(dataframe)
 
     def __getitem__(self, keys):
         name, selection = self._validate_index_keys(keys)
@@ -100,6 +103,48 @@ class Metadata(ABC):
             self._update_array(array_name, value, selection)
         else:
             self._create_array(array_name, value, selection)
+
+    @property
+    @abstractmethod
+    def component(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def data_arrays(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def length(self):
+        raise NotImplementedError
+
+    @property
+    def dataframe(self):
+        data_arrays = self.data_arrays
+
+        data = {}
+        for column in data_arrays.keys():
+            prefix, *column_name = column.split(':')
+            if prefix != f'{self.prefix}':
+                continue
+            column_name = ':'.join(column_name)
+
+            if self._array_units[column].dimensionless:
+                data[column_name] = pd.Series(
+                    data_arrays[column],  dtype=f'pint[dimensionless]')
+                continue
+
+            array = config.settings.units.convert(
+                data_arrays[column] * self._array_units[column])
+            units = f'{array.units:~}'
+            data[column_name] = pd.Series(
+                array.magnitude, dtype=f'pint[{units}]')
+
+        return pd.DataFrame(data, index=pd.RangeIndex(self.length, name='id'))
+
+    def bind(self, mesh_binding):
+        self._mesh_binding = mesh_binding
 
     def _create_array(self, array_name, value, selection):
         array = self.dtype.get_empty_array(self.length, value)
@@ -122,21 +167,6 @@ class Metadata(ABC):
         array[selection_mask] = value.magnitude
         data_arrays[array_name] = array
 
-    @property
-    @abstractmethod
-    def component(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def data_arrays(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def length(self):
-        raise NotImplementedError
-
     def _validate_index_keys(self, keys):
         if not isinstance(keys, tuple):
             keys = (keys, select.All())
@@ -151,32 +181,6 @@ class Metadata(ABC):
             raise TypeError('Second metadata index must be a Range object')
 
         return keys
-
-    def bind(self, mesh_binding):
-        self._mesh_binding = mesh_binding
-
-    @property
-    def dataframe(self):
-        data_arrays = self.data_arrays
-
-        data = {}
-        for column in data_arrays.keys():
-            prefix, *column_name = column.split(':')
-            if prefix != f'{self.prefix}':
-                continue
-            column_name = ':'.join(column_name)
-
-            if not self._array_units[column]:
-                data[column_name] = pd.Series(data_arrays[column])
-                continue
-
-            array = config.settings.units.convert(
-                data_arrays[column] * self._array_units[column])
-            units = f'{array.units:~}'
-            data[column_name] = pd.Series(
-                array.magnitude, dtype=f'pint[{units}]')
-
-        return pd.DataFrame(data, index=pd.RangeIndex(self.length, name='id'))
 
 
 class CellMetadata(Metadata):
@@ -206,6 +210,31 @@ class PointMetadata(Metadata):
 class Properties(CellMetadata):
     def __init__(self, **kwargs):
         super().__init__('property', **kwargs)
+        self.models = CellMetadata('property', dtype=String())
+        self.models.bind(self._mesh_binding)
+
+    def __setitem__(self, keys, value):
+        name, selection = self._validate_index_keys(keys)
+        array_name = f'{self.prefix}:{name}'
+
+        properties = self._get_available_properties()
+        if name in properties.keys():
+            value = properties[name](value).quantity
+            super().__setitem__(keys, value)
+
+        if name == 'model':
+            # TODO: check agains model names
+            self.models[name, selection] = value
+            self._array_units[array_name] = units.Unit('')
+            return
+
+    def _get_available_properties(self):
+        properties = {}
+        all_materials = utils.get_all_subclasses(materials.BaseMaterial)
+        for material in all_materials:
+            properties.update(material.property_types)
+
+        return properties
 
 
 class CellSets(CellMetadata):
