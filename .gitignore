@@ -133,3 +133,12 @@ dmypy.json
 
 # VSCode
 .vscode
+
+# CAD Files
+*.dxf
+*.stl
+*.vtu
+*.vtk
+*.vtp
+*.obj
+*.ply

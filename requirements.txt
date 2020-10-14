@@ -5,20 +5,24 @@
 #    pip-compile
 #
 appdirs==1.4.4            # via pyvista
-attrs==19.3.0             # via pytest
+attrs==19.3.0             # via automat, pytest, twisted
+automat==20.2.0           # via twisted
 certifi==2020.4.5.2       # via requests
 cftime==1.1.3             # via netcdf4
 chardet==3.0.4            # via requests
 click==7.1.2              # via mkdocs, nltk
+constantly==15.1.0        # via twisted
 coverage==5.1             # via coveralls, pytest-cov
 coveralls==2.0.0          # via krak
 docopt==0.6.2             # via coveralls
 flake8==3.8.3             # via pytest-flake8
 future==0.18.2            # via lunr
 h5py==2.10.0              # via meshio
-idna==2.9                 # via requests
+hyperlink==19.0.0         # via twisted
+idna==2.9                 # via hyperlink, requests
 imageio==2.8.0            # via pyvista
 importlib-metadata==1.6.1  # via flake8, markdown, meshio, pluggy, pytest
+incremental==17.5.0       # via twisted
 jinja2==2.11.2            # via mkdocs
 joblib==0.15.1            # via nltk
 livereload==2.6.2         # via mkdocs
@@ -31,26 +35,36 @@ mkdocs==1.1.2             # via krak
 more-itertools==8.3.0     # via pytest
 netcdf4==1.5.3            # via meshio
 nltk==3.5                 # via lunr
-numpy==1.18.5             # via cftime, h5py, imageio, meshio, netcdf4, pyvista
+numpy==1.18.5             # via cftime, h5py, imageio, meshio, netcdf4, pandas, pyvista, tetgen
 packaging==20.4           # via pytest
+pandas==1.0.5             # via krak
 pillow==7.1.2             # via imageio
 pluggy==0.13.1            # via pytest
 py==1.8.1                 # via pytest
 pycodestyle==2.6.0        # via flake8
 pyflakes==2.2.0           # via flake8
+pyhamcrest==2.0.2         # via twisted
 pyparsing==2.4.7          # via packaging
 pytest-cov==2.9.0         # via krak
 pytest-flake8==1.0.6      # via krak
 pytest==5.4.3             # via krak, pytest-cov, pytest-flake8
-pyvista==0.25.3           # via krak
+python-dateutil==2.8.1    # via pandas
+pytz==2020.1              # via pandas
+pyvista==0.25.3           # via krak, tetgen
 pyyaml==5.3.1             # via mkdocs
 regex==2020.6.8           # via nltk
 requests==2.23.0          # via coveralls
 scooby==0.5.5             # via pyvista
-six==1.15.0               # via h5py, livereload, lunr, packaging
+six==1.15.0               # via automat, h5py, livereload, lunr, packaging, python-dateutil
+tetgen==0.4.4             # via krak
 tornado==6.0.4            # via livereload, mkdocs
 tqdm==4.46.1              # via nltk
+twisted==20.3.0           # via krak
 urllib3==1.25.9           # via requests
 vtk==8.1.2                # via krak, pyvista
 wcwidth==0.2.4            # via pytest
 zipp==3.1.0               # via importlib-metadata
+zope.interface==5.1.0     # via twisted
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools

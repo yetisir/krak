@@ -1,3 +1,7 @@
+class Points:
+    pass
+
+
 class Line:
     pass
 
@@ -6,11 +10,15 @@ class Polygon:
     pass
 
 
-class Plane(Polygon):
+class FinitePlane(Polygon):
     pass
 
 
 class Hexahedron:
+    pass
+
+
+class Cube(Hexahedron):
     pass
 
 
