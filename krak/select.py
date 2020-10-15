@@ -17,12 +17,12 @@ class BaseRange(ABC):
     def __neg__(self):
         return Invert(self)
 
-    def _map_points_to_cells(self, point_array, mesh):
+    def map_points_to_cells(self, point_array, mesh):
         array_name = 'temp:range'
         mesh.pyvista.point_arrays[array_name] = point_array
         return mesh.pyvista.point_data_to_cell_data().cell_arrays[array_name]
 
-    def _map_cells_to_points(self, cell_array, mesh):
+    def map_cells_to_points(self, cell_array, mesh):
         array_name = 'temp:range'
         mesh.pyvista.cell_arrays[array_name] = cell_array
         return mesh.pyvista.cell_data_to_point_data().point_arrays[array_name]
@@ -157,7 +157,7 @@ class Distance(BaseRange):
             return surface_distances <= self.distance
 
         elif component == 'cells':
-            return self._map_points_to_cells(
+            return self.map_points_to_cells(
                 surface_distances, mesh) <= self.distance
 
 

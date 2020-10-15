@@ -27,11 +27,6 @@ class MeshFilters:
             self.filters[filter_name] = filter
             self.add_filter(filter, filter_name)
 
-    @property
-    @abstractmethod
-    def dimension(self):
-        raise NotImplementedError
-
     def _all_filters(self, cls):
         return set(cls.__subclasses__()).union([
             subclass for filter_class in cls.__subclasses__() for

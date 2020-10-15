@@ -11,12 +11,20 @@ def lidar():
     return mesh.load_mesh(examples.download_lidar())
 
 
-def crater_topo():
-    return mesh.load_mesh(examples.download_crater_topo)
+def crater():
+    return mesh.load_mesh(examples.download_crater_topo())
 
-# def
 
-# examples.download_damavand_volcano
+def volcano():
+    return mesh.load_mesh(examples.download_damavand_volcano())
+
+
+def faults():
+    return mesh.load_mesh(examples.dowload_faults())
+
+
+def saddle():
+    return mesh.load_mesh(examples.download_saddle_surface())
 
 # examples.download_faults
 

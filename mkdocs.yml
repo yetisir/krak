@@ -1,18 +1,40 @@
 site_name: KraK Python Library
+site_url: https://krak.yetisir.me/docs
 repo_url: https://github.com/yetisir/krak
 site_author: M. Yetisir
 site_description: KraK Python Library Documentation
 
 nav:
-  - Home: index.md
+  - KraK: markdown/index.md
+  - Getting Started:
+      - Installation: markdown/start/installation.md
+      - Basic Usage: markdown/start/usage.md
+      - Examples: markdown/start/examples.md
+  - Utilties:
+      - Spatial: markdown/utilities/spatial.md
+      - Units: markdown/utilities/units.md
+  - Meshing:
+      - Overview: markdown/mesh/overview.md
+      - Filters: markdown/mesh/filters.md
+      - Metadata: markdown/mesh/metadata.md
+  - Materials:
+      - Basics: markdown/materials/basics.md
+      - Strength Models: markdown/materials/strength.md
+  - Boundary Conditions:
+      - Basics: markdown/boundary/basics.md
+  - Plotting:
+      - Viewer: markdown/plotting/viewer.md
+  - API Reference:
+      - spatial: markdown/api/spatial.md
 
 theme:
-  name: readthedocs
+  name: material
   highlightjs: true
   hljs_languages:
     - python
 
-extra:
-  social:
-    - type: github
-    - link: http://github.com/yetisir/krak
+plugins:
+  - search
+  - mkdocstrings:
+      watch:
+        - krak

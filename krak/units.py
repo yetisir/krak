@@ -6,6 +6,7 @@ pint_pandas.PintType.ureg = registry
 
 
 class Dimension(pint.util.UnitsContainer):
+
     def __init__(self, length=None, mass=None, time=None):
         args = {}
         if length:
