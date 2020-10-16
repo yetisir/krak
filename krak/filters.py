@@ -41,7 +41,7 @@ class Translate(Filter, Transform):
 
     def __init__(self, mesh, direction=(0, 0, 1), distance=None):
         super().__init__(mesh)
-        self.direction = spatial.Direction(direction)
+        self.direction = spatial.Vector(direction)
         if distance is not None:
             self.direction = self.direction.scale(distance)
 
@@ -271,7 +271,7 @@ class Extrude(Filter):
 
     def __init__(self, mesh, direction=(0, 0, 1), distance=None):
         super().__init__(mesh)
-        self.direction = spatial.Direction(direction).scale(distance)
+        self.direction = spatial.Vector(direction).scale(distance)
 
     def filter(self):
         mesh = self.mesh.pyvista.extract_surface().extrude(self.direction)
@@ -283,7 +283,7 @@ class ExtrudeSurface(Filter):
 
     def __init__(self, mesh, direction=(0, 0, 1), distance=None):
         super().__init__(mesh)
-        self.direction = spatial.Direction(direction).scale(distance)
+        self.direction = spatial.Vector(direction).scale(distance)
 
     def filter(self):
         mesh = self.mesh.pyvista.extract_surface().extrude(self.direction)
@@ -336,7 +336,7 @@ class Extend(Filter):
             snap_to_axis=True, tolerance=1e-6, orientation_filter=0.5,
             quality_filter=0.01):
         super().__init__(mesh)
-        self.direction = spatial.Direction(direction).scale(distance)
+        self.direction = spatial.Vector(direction).scale(distance)
         self.tolerance = tolerance
         self.orientation_filter = orientation_filter
         self.quality_filter = quality_filter
@@ -411,7 +411,7 @@ class Extend(Filter):
         for line_id, line_conectivity in flat_boundary.cells.iterrows():
             start = flat_boundary_points.loc[line_conectivity[0]].values
             end = flat_boundary_points.loc[line_conectivity[1]].values
-            direction = spatial.Direction(start - end)
+            direction = spatial.Vector(start - end)
 
             orientation_diff = np.abs((
                 (direction >> orientation).unit *

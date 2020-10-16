@@ -313,7 +313,7 @@ class SurfaceMesh(Mesh):
 
         all_normals = []
         for normal, area in zip(normals, areas):
-            normal = spatial.Direction(normal).scale(area)
+            normal = spatial.Vector(normal).scale(area)
             if normal[0] < 0:
                 normal = normal.flip()
 

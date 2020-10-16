@@ -7,9 +7,9 @@ quantities such as strike, dip, trend and plunge, but also allows for standard
 mathematical descriptions.
 
     # Define a vector by trend and plunge
-    vector = spatial.Direction(trend=13, plunge=40)
+    vector = spatial.Vector(trend=13, plunge=40)
     print(vector)
-    >>> Direction([ 0.17232251,  0.74641077, -0.64278761])
+    >>> Vector([ 0.17232251,  0.74641077, -0.64278761])
 
     # Define a plane orientation by the plane normal
     orientation = spatial.Orientation(normal=(13.9, 7.6, 23.0))
@@ -19,14 +19,16 @@ mathematical descriptions.
     # Project the vector onto the plane orientation
     projection = vector.project(orientation)
     print(projection)
-    >>> Direction([ 0.29201164,  0.81185231, -0.44474084])
+    >>> Vector([ 0.29201164,  0.81185231, -0.44474084])
 """
 
 
 import numpy as np
 
+from . import properties, units
 
-class Vector(np.ndarray):
+
+class BaseVector(np.ndarray):
     """Base spatial vector quantity, inherited from np.ndarray.
 
     Vector objects inherit from np.ndarray, but are constrained to a length
@@ -42,30 +44,24 @@ class Vector(np.ndarray):
             The algebraic norm of the vector.
 
     Todo:
-        Add better support and distinction for 2 dimensional vectors.
-        Find more consistent approach to vector operations with respect to types.
-        Add setters and make objects optionally mutable.
+        Add better support and distinction for 2 dimensional vectors?
     """
 
-    def __new__(cls, vector):
+    def __new__(cls, vector=(0, 0, 1)):
         """Creates an Vector object given a 2 or three dimensional vector.
 
         Args:
             vector (array_like):
                 Numeric array of length 2 or 3 representing a vector quantity
         """
-        if len(vector) == 2:
-            vector = list(vector) + [0]
-        if len(vector) != 3:
-            raise ValueError('Vector must be length 2 or 3')
 
-        return np.array(vector).view(cls)
+        return cls._validate_vector(vector).view(cls)
 
     def __mul__(self, other):
         return np.dot(self, other * 1)
 
     def __pow__(self, other):
-        return self.__class__(np.cross(self, other))
+        return Orientation(normal=np.cross(self, other))
 
     def __rshift__(self, other):
         return self.project(other)
@@ -80,15 +76,48 @@ class Vector(np.ndarray):
             return False
 
         if np.sign(self[0]) != np.sign(other[0]):
+            print(3)
             return False
 
         if not np.isclose(self.magnitude, other.magnitude):
+            print(4)
             return False
 
+        if self.magnitude == 0 and other.magnitude == 0:
+            return True
+
         if not np.isclose(self.unit * other.unit, 1):
+            print(5)
             return False
 
         return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    @property
+    def x(self):
+        return self[0]
+
+    @x.setter
+    def x(self, value):
+        self[0] = value
+
+    @property
+    def y(self):
+        return self[1]
+
+    @y.setter
+    def y(self, value):
+        self[1] = value
+
+    @property
+    def z(self):
+        return self[2]
+
+    @z.setter
+    def z(self, value):
+        self[2] = value
 
     @property
     def unit(self):
@@ -99,8 +128,11 @@ class Vector(np.ndarray):
             krak.spatial.Vector:
                 New Vector object with magnitude of 1.
         """
-
-        return self.__class__(self / self.magnitude)
+        if self.magnitude:
+            unit_vector = self / self.magnitude
+        else:
+            unit_vector = self
+        return self.__class__(unit_vector)
 
     @property
     def values(self):
@@ -113,6 +145,12 @@ class Vector(np.ndarray):
 
         return np.array(self)
 
+    @values.setter
+    def values(self, value):
+        vector = self._validate_vector(value)
+        for i, component in enumerate(vector):
+            self[i] = component
+
     @property
     def magnitude(self):
         """Algebraic norm of the vector
@@ -123,6 +161,10 @@ class Vector(np.ndarray):
         """
 
         return np.linalg.norm(self)
+
+    @magnitude.setter
+    def magnitude(self, value):
+        self.values = self.scale(value)
 
     def scale(self, size):
         """Scales vector to a specified magnitude. This method creates a new
@@ -141,64 +183,31 @@ class Vector(np.ndarray):
             return self
         return self.__class__(self.unit * size)
 
-    def project(self, destination):
-        """Projects vector onto any krak.spatial Object and Returns a new
-        Vector object. Valid destinations include all vector and plane like
-        quantities. Projection onto a plane or orientation is done in the
-        normal direction.
+    def flip(self):
+        return self.__class__(-self)
 
-        Args:
-            destination (krak.spatial Object):
-                Spatial object to project vector onto. 
+    @staticmethod
+    def _validate_vector(vector):
+        try:
+            length = len(vector)
+        except TypeError:
+            raise TypeError('Vector must be array-like')
 
-        Returns:
-            krak.spatial.Vector:
-                Projected vector object of the same type.
-        """
+        if length == 2:
+            vector = list(vector) + [0]
+        if length != 3:
+            raise ValueError('Vector must be length 2 or 3')
 
-        if isinstance(destination, Vector):
-            if isinstance(destination, Orientation):
-                return self._plane_projection(destination)
-            else:
-                return self._vector_projection(destination)
-
-        elif isinstance(destination, Line):
-            return Line(
-                origin=destination.origin,
-                direction=self >> destination.direction)
-        elif isinstance(destination, Plane):
-            return Line(
-                origin=destination.origin,
-                direction=self >> destination.orientation)
-        else:
-            try:
-                return self._vector_projection(Vector(destination))
-            except TypeError:
-                raise ValueError(f'Unable to project onto "{destination}"')
-
-    def _vector_projection(self, vector):
-        return self.__class__(
-            vector.unit * np.dot(self, vector) / vector.magnitude)
-
-    def _plane_projection(self, orientation):
-        return self.__class__(self - (self >> orientation.normal))
+        try:
+            return np.array(vector, dtype=float)
+        except ValueError:
+            raise ValueError('Vector must be numeric')
 
 
-class Position(Vector):
-    """Vector used to describe a position in space.
-
-    Position objects inherit directly from Vector objects without any
-    additional functionality. They essentially act as a (very) thin wrapper
-    purely for API nomenclature.
-    """
-
-    pass
-
-
-class Direction(Vector):
+class Vector(BaseVector):
     """Vector used to describe a direction without a positional reference.
 
-    Direction objects inherit from Vector objects and add new ways to
+    Vector objects inherit from Vector objects and add new ways to
     construct based on conventional geoscience nomenclature and conventions.
     Here, trend and plunge are offered as arguments to help simplify the
     vector description. An optional flip argument is also provided to reverse
@@ -216,8 +225,8 @@ class Direction(Vector):
 
     """
 
-    def __new__(cls, vector=None, trend=None, plunge=None, flip=False):
-        """Creates a Direction object given either a vector array or trend
+    def __new__(cls, vector=None, trend=None, plunge=None):
+        """Creates a Vector object given either a vector array or trend
         and plunge.
 
         Args:
@@ -227,27 +236,10 @@ class Direction(Vector):
                 Azimuth of the horizontal component of the direction (degrees).
             plunge (float):
                 Inclination of vector from the horizontal (degrees).
-
-        Todo:
-            Improve error handling - replace assert statement with conditional
         """
 
-        assert (
-            (vector is not None) or
-            (trend is not None and plunge is not None)
-        )
-
         if vector is None:
-            trend_rad = np.deg2rad(trend)
-            plunge_rad = np.deg2rad(plunge)
-            vector = [
-                np.sin(trend_rad) * np.cos(plunge_rad),
-                np.cos(trend_rad) * np.cos(plunge_rad),
-                -np.sin(plunge_rad),
-            ]
-
-        if flip:
-            vector = [-i for i in vector]
+            vector = cls._vector_from_trend_and_plunge(trend, plunge)
 
         return super().__new__(cls, vector)
 
@@ -260,11 +252,16 @@ class Direction(Vector):
                 trend of the vector (degrees)
         """
 
-        if self[1] == 0:
-            trend = 90 if self[0] > 0 else 270
+        if self.y == 0:
+            trend = 90 if self.x > 0 else 270
         else:
-            trend = np.rad2deg(np.arctan(self[0]/self[1]))
+            trend = np.rad2deg(np.arctan(self.x / self.y))
+
         return trend if trend > 0 else trend + 180
+
+    @trend.setter
+    def trend(self, trend):
+        self.values = self._vector_from_trend_and_plunge(trend, self.plunge)
 
     @property
     def plunge(self):
@@ -277,28 +274,70 @@ class Direction(Vector):
 
         return np.rad2deg(-np.arcsin(self[-1] / np.linalg.norm(self)))
 
-    def flip(self):
-        """Reverses the direction to yeild a parallel, but opposite
-        direction. This method returns a new Direction object and does not
-        mutate the current Direction object.
+    @plunge.setter
+    def plunge(self, plunge):
+        self.values = self._vector_from_trend_and_plunge(self.trend, plunge)
+
+    def project(self, destination):
+        """Projects vector onto any krak.spatial Object and Returns a new
+        Vector object. Valid destinations include all vector and plane like
+        quantities. Projection onto a plane or orientation is done in the
+        normal direction.
+
+        Args:
+            destination (krak.spatial Object):
+                Spatial object to project vector onto.
 
         Returns:
-            krak.spatial.Direction:
-                Reversed direction object with same magnitude.
+            krak.spatial.Vector:
+                Projected vector object of the same type.
         """
 
-        return Direction(vector=self, flip=True)
+        if isinstance(destination, Vector):
+            return self._vector_projection(Vector(destination))
+        elif isinstance(destination, Orientation):
+            return Vector(self - (self >> destination.normal))
+
+        elif isinstance(destination, Line):
+            return Line(
+                origin=destination.origin,
+                direction=self >> destination.direction)
+        elif isinstance(destination, Plane):
+            return Line(
+                origin=destination.origin,
+                direction=self >> destination.orientation)
+        else:
+            try:
+                return self._vector_projection(Vector(destination))
+            except TypeError:
+                raise ValueError(f'Unable to project onto "{destination}"')
+
+    @staticmethod
+    def _vector_from_trend_and_plunge(trend, plunge):
+        trend = (
+            properties.Trend(trend).quantity if trend is not None else
+            0 * units.Unit('deg'))
+        plunge = (
+            properties.Plunge(plunge).quantity if plunge is not None else
+            -90 * units.Unit('deg'))
+
+        return [
+            np.sin(trend).magnitude * np.cos(plunge).magnitude,
+            np.cos(trend).magnitude * np.cos(plunge).magnitude,
+            -np.sin(plunge).magnitude,
+        ]
+
+    def _vector_projection(self, destination):
+        return Vector(
+            destination.unit * np.dot(self, destination) /
+            destination.magnitude)
 
 
-# class Displacement(Direction):
-#     def __init__(self, distance=None, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-
-class Orientation(Direction):
+class Orientation(BaseVector):
     def __new__(
             cls, normal=None, pole=None, strike=None, dip=None,
-            dip_direction=None, plunge=None, trend=None, flip=False):
+            dip_direction=None, plunge=None, trend=None):
+
         assert (
             (normal is not None or pole is not None) or
             (strike is not None and dip is not None) or
@@ -316,8 +355,9 @@ class Orientation(Direction):
             if dip_direction is not None:
                 trend = dip_direction + 180
 
-        return super().__new__(
-            cls, vector=normal, trend=trend, plunge=plunge, flip=flip)
+            normal = Vector(trend=trend, plunge=plunge)
+
+        return super().__new__(cls, vector=normal)
 
     @property
     def strike(self):
@@ -333,15 +373,27 @@ class Orientation(Direction):
 
     @property
     def normal(self):
-        return Direction(self)
+        return Vector(self)
 
-    def flip(self):
-        return Orientation(normal=self, flip=True)
+
+class Line:
+    def __init__(self, origin=None, **kwargs):
+        self.origin = Vector(origin)
+        self.direction = Vector(**kwargs)
+
+    def __rshift__(self, other):
+        return self.project(self, other)
+
+    def project(self, destination):
+        return Line(
+            origin=self.origin >> destination,
+            direction=self.direction >> destination,
+        )
 
 
 class Plane:
     def __init__(self, origin=None, orientation=None, **kwargs):
-        self.origin = Position(origin)
+        self.origin = Vector(origin)
         if orientation is None:
             orientation = Orientation(**kwargs)
         self.orientation = orientation
@@ -356,18 +408,3 @@ class Plane:
 
     def flip(self):
         return Plane(origin=self.origin, orientation=self.orientation.flip())
-
-
-class Line:
-    def __init__(self, origin=None, **kwargs):
-        self.origin = Position(origin)
-        self.direction = Direction(**kwargs)
-
-    def __rshift__(self, other):
-        return self.project(self, other)
-
-    def project(self, destination):
-        return Line(
-            origin=self.origin >> destination,
-            direction=self.direction >> destination,
-        )

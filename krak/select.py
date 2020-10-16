@@ -164,7 +164,7 @@ class Distance(BaseRange):
 class RayCount(BaseRange):
     def __init__(self, mesh, count, direction=None, **kwargs):
         self.mesh = mesh
-        self.direction = spatial.Direction(vector=direction, **kwargs)
+        self.direction = spatial.Vector(vector=direction, **kwargs)
 
     def query(self, mesh, component):
         pass

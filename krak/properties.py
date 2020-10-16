@@ -7,15 +7,6 @@ import pint_pandas
 from . import units, config
 
 
-def propertyoperator(func):
-    def wrapper(self, other):
-        if isinstance(other, Property):
-            other = other.quantity
-        func(self, other)
-
-    return wrapper
-
-
 class Property:
     dimensions = units.Dimensionless()
     name = ''
@@ -115,6 +106,7 @@ class YoungsModulus(Property):
 
 
 class AngleProperty(Property):
+    dimensions = units.Angle()
     allowed_units = [
         units.Unit('degree'), units.Unit('radians')
     ]
@@ -124,14 +116,12 @@ class AngleProperty(Property):
 
 
 class FrictionAngle(AngleProperty):
-    dimensions = units.Angle()
     name = 'friction'
     min_value = 0
     max_value = 90 * units.Unit('degree')
 
 
 class DilationAngle(AngleProperty):
-    dimensions = units.Angle()
     name = 'dilation'
     min_value = 0
     max_value = 90 * units.Unit('degree')
@@ -149,3 +139,16 @@ class TensileStrength(Property):
     name = 'tension'
     min_value = 0
     max_value = float('inf')
+
+
+# Spatial Properties - move elsewhere?
+class Trend(AngleProperty):
+    name = 'trend'
+    min_value = 0
+    max_value = 360 * units.Unit('degree')
+
+
+class Plunge(AngleProperty):
+    name = 'plunge'
+    min_value = -90 * units.Unit('degree')
+    max_value = 90 * units.Unit('degree')

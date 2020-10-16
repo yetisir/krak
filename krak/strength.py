@@ -220,11 +220,21 @@ class HoekBrown(Base):
     def _find_closest(self, sigma_3, sigma_1):
 
         def closest_point(trial_sigma_3, sigma_3, sigma_1):
-            reference_point = spatial.Direction([sigma_3, sigma_1, 0])
-            envelope_point = spatial.Direction(
+            """[summary]
+
+            Args:
+                trial_sigma_3 (float): [description]
+                sigma_3 (float): [description]
+                sigma_1 (float): [description]
+
+            Returns:
+                float: Dot product of envelope tangent and vector from point
+            """
+            reference_point = spatial.Vector([sigma_3, sigma_1, 0])
+            envelope_point = spatial.Vector(
                 [trial_sigma_3, self.sigma_1_strength(trial_sigma_3), 0])
 
-            envelope_tangent = spatial.Direction(
+            envelope_tangent = spatial.Vector(
                 [1, self.derivative(trial_sigma_3), 0])
 
             if envelope_point[1] >= 0:

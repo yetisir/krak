@@ -1,10 +1,11 @@
-from . import utils, units, spatial, constants
+import numpy as np
+from . import utils, units, constants
 
 
 class Settings(metaclass=utils.Singleton):
     def __init__(self):
         self._units = units.SI()
-        self._gravity = spatial.Direction(
+        self._gravity = np.array(
             [0, 0, -1]) * constants.gravitational_acceleration
         self._water_density = constants.water_density
 
@@ -24,28 +25,6 @@ class Settings(metaclass=utils.Singleton):
         self._units = value
 
     @property
-    def gravity_direction(self):
-        return self._gravity.unit
-
-    @gravity_direction.setter
-    def gravity_direction(self, value):
-        self._gravity = (
-            spatial.Direction(value).scale(self.gravity_magnitude) *
-            self.units.acceleration
-        )
-
-    @property
-    def gravity_magnitude(self):
-        return self._gravity.to(self.units.acceleration).magnitude.magnitude
-
-    @gravity_magnitude.setter
-    def gravity_magnitude(self, value):
-        value = utils.parse_quantity(
-            value, default_units=self.units.acceleration)
-        self._gravity = self._gravity.magnitude.scale(
-            value.magnitude) * value.units
-
-    @property
     def gravity(self):
         return self._gravity
 
@@ -53,7 +32,7 @@ class Settings(metaclass=utils.Singleton):
     def gravity(self, value):
         value = utils.parse_quantity(
             value, default_units=self.units.acceleration)
-        self._gravity = spatial.Direction(value.magnitude) * value.units
+        self._gravity = np.array(value) * value.units
 
     @property
     def water_density(self):
@@ -61,6 +40,8 @@ class Settings(metaclass=utils.Singleton):
 
     @water_density.setter
     def water_density(self, value):
+        value = utils.parse_quantity(
+            value, default_units=self.units.density)
         self._water_density = utils.parse_quantity(value, self.units.density)
 
 

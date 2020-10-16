@@ -11,7 +11,7 @@ nav:
       - Basic Usage: markdown/start/usage.md
       - Examples: markdown/start/examples.md
   - Utilties:
-      - Spatial: markdown/utilities/spatial.md
+      - Spatial: notebooks/spatial.ipynb
       - Units: markdown/utilities/units.md
   - Meshing:
       - Overview: markdown/mesh/overview.md
@@ -38,3 +38,5 @@ plugins:
   - mkdocstrings:
       watch:
         - krak
+  - mkdocs-jupyter:
+      execute: True
