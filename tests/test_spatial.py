@@ -1,6 +1,6 @@
 import numpy as np
 
-from krak import spatial
+from krak import spatial, units
 
 # Setup functions
 
@@ -20,11 +20,16 @@ def vector_3D():
 def vector_2D():
     return spatial.Vector(reference_vector_2D())
 
+
+def degrees():
+    return units.Unit('degrees')
+
+
 # Test functions
 
 
 def test_vector_construction_default():
-    assert spatial.Vector() == spatial.Vector([0, 0, 1])
+    assert spatial.Vector() == spatial.Vector([0, 1, 0])
 
 
 def test_vector_construction_list():
@@ -60,8 +65,6 @@ def test_vector_cross_product():
 def test_vector_values_property():
     assert (vector_3D().values == np.array(reference_vector_3D())).all()
 
-
-def test_vector_values_setter():
     vector = vector_3D()
     vector.values = [4.5, 5.6, 6.7]
     assert vector == spatial.Vector([4.5, 5.6, 6.7])
@@ -70,8 +73,6 @@ def test_vector_values_setter():
 def test_vector_magnitude_property():
     assert np.isclose(vector_3D().magnitude, 4.27668095606862)
 
-
-def test_vector_magnitude_setter():
     vector = vector_3D()
     vector.magnitude = 6.5
     assert np.isclose(vector, spatial.Vector(
@@ -89,8 +90,6 @@ def test_vector_xyz_properties():
     assert vector_3D().y == 2.3
     assert vector_3D().z == 3.4
 
-
-def test_vector_xyz_setters():
     vector = vector_3D()
     vector.x = 4.5
     vector.y = 5.6
@@ -105,3 +104,88 @@ def test_vector_projection():
     assert vector.project(vector) == vector
     assert vector.project([5.6, 6.7, 7.8]) == spatial.Vector(
         [1.98730761, 2.3776716, 2.7680356])
+
+
+def test_vector_trend_property():
+    vector = vector_3D()
+    vector.trend = 50
+    assert np.isclose(vector.trend, 50 * degrees())
+    vector.trend = 120
+    assert np.isclose(vector.trend, 120 * degrees())
+    vector.trend = 220
+    assert np.isclose(vector.trend, 220 * degrees())
+    vector.trend = 305
+    assert np.isclose(vector.trend, 305 * degrees())
+
+
+def test_vector_plunge_property():
+    vector = vector_3D()
+    vector.plunge = 90
+    assert np.isclose(vector.plunge, 90 * degrees())
+
+
+def test_orientation_construction_default():
+    assert spatial.Orientation() == spatial.Orientation([0, 0, -1])
+
+
+def test_orientation_construction_normal():
+    assert spatial.Orientation(normal=reference_vector_3D()) == vector_3D()
+    assert spatial.Orientation(normal=vector_3D()) == vector_3D()
+
+
+def test_orientation_construction_pole():
+    assert spatial.Orientation(pole=reference_vector_3D()) == vector_3D()
+    assert spatial.Orientation(pole=vector_3D()) == vector_3D()
+
+
+def test_orientation_construction_strike_and_dip():
+    orientation = spatial.Orientation(strike=120, dip=30)
+    assert orientation == spatial.Orientation(
+        [0.25, 0.4330127, -0.8660254])
+
+
+def test_orientation_construction_dip_and_dip_drection():
+    orientation = spatial.Orientation(dip=34, dip_direction=55)
+    assert orientation == spatial.Orientation(
+        [-0.45806401, -0.32073987, -0.82903757])
+
+
+def test_orientation_strike_property():
+    orientation = spatial.Orientation(strike=120, dip=30)
+    assert np.isclose(orientation.strike, 120 * degrees())
+
+    orientation.strike = 55
+    assert np.isclose(orientation.strike, 55 * degrees())
+
+
+def test_orientation_dip_property():
+    orientation = spatial.Orientation(strike=120, dip=30)
+    assert np.isclose(orientation.dip, 30 * degrees())
+
+    orientation = spatial.Orientation(dip=34, dip_direction=55)
+    assert np.isclose(orientation.dip, 34 * degrees())
+
+    orientation.dip = 55
+    assert np.isclose(orientation.dip, 55 * degrees())
+
+
+def test_orientation_dip_direction_property():
+    orientation = spatial.Orientation(dip=34, dip_direction=55)
+    assert np.isclose(orientation.dip_direction, 55 * degrees())
+
+    orientation.dip_direction = 310
+    assert np.isclose(orientation.dip_direction, 310 * degrees())
+
+
+def test_orientation_normal_property():
+    orientation = spatial.Orientation(dip=34, dip_direction=55)
+
+    orientation.normal = reference_vector_3D()
+    assert np.isclose(orientation.normal, vector_3D()).all()
+
+
+def test_orientation_pole_property():
+    orientation = spatial.Orientation(dip=34, dip_direction=55)
+
+    orientation.pole = reference_vector_3D()
+    assert np.isclose(orientation.pole, vector_3D()).all()

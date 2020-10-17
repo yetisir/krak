@@ -152,3 +152,21 @@ class Plunge(AngleProperty):
     name = 'plunge'
     min_value = -90 * units.Unit('degree')
     max_value = 90 * units.Unit('degree')
+
+
+class Strike(AngleProperty):
+    name = 'strike'
+    min_value = 0 * units.Unit('degree')
+    max_value = 360 * units.Unit('degree')
+
+
+class Dip(AngleProperty):
+    name = 'dip'
+    min_value = 0 * units.Unit('degree')
+    max_value = 90 * units.Unit('degree')
+
+
+class DipDirection(AngleProperty):
+    name = 'dip_direction'
+    min_value = 0 * units.Unit('degree')
+    max_value = 360 * units.Unit('degree')

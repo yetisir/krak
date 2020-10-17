@@ -25,7 +25,7 @@ mathematical descriptions.
 
 import numpy as np
 
-from . import properties, units
+from . import properties, units, config
 
 
 class BaseVector(np.ndarray):
@@ -47,13 +47,63 @@ class BaseVector(np.ndarray):
         Add better support and distinction for 2 dimensional vectors?
     """
 
-    def __new__(cls, vector=(0, 0, 1)):
+    def __new__(cls, vector=(0, 1, 0)):
         """Creates an Vector object given a 2 or three dimensional vector.
 
         Args:
             vector (array_like):
                 Numeric array of length 2 or 3 representing a vector quantity
         """
+
+
+class Vector(np.ndarray):
+    """Vector used to describe a direction without a positional reference.
+
+    Vector objects inherit from np.ndarray, but are constrained to a length
+    of 3 and have overloaded operators to make vector operations easier. 2D
+    vectors are supported by adding a z component = 0 which forces all
+    operations onto the xy plane. Scaling and projection methods have also been
+    added for convenience. Object construction can be based on conventional
+    geoscience nomenclature and conventions such as trend and plunge to help
+    simplify the vector description.
+
+    Attributes:
+        unit (krak.spatial.Vector):
+            A unit vector of the same type. i.e. scaled to a magnitude of 1.
+        values (np.ndarray):
+            The underlying np.ndarray. (settable)
+        magnitude (float):
+            The algebraic norm of the vector. (settable)
+        trend (float):
+            Azimuth of the horizontal component of the direction. (settable)
+        plunge (float):
+            Inclination of vector from the horizontal. (settable)
+        x (float):
+            x coordinate of the vector (settable)
+        y (float):
+            y coordinate of the vector (settable)
+        z (float):
+            z coordinate of the vector (settable)
+
+    Todo:
+        Add better support and distinction for 2 dimensional vectors?
+    """
+
+    def __new__(cls, vector=None, trend=None, plunge=None):
+        """Creates a Vector object given either a vector array or trend
+        and plunge.
+
+        Args:
+            vector (array_like):
+                Numeric array of length 2 or 3 representing a vector quantity
+            trend (float):
+                Azimuth of the horizontal component of the direction (degrees).
+            plunge (float):
+                Inclination of vector from the horizontal (degrees).
+        """
+
+        if vector is None:
+            vector = cls._vector_from_trend_and_plunge(trend, plunge)
 
         return cls._validate_vector(vector).view(cls)
 
@@ -75,48 +125,69 @@ class BaseVector(np.ndarray):
         except TypeError:
             return False
 
-        if np.sign(self[0]) != np.sign(other[0]):
-            print(3)
-            return False
-
-        if not np.isclose(self.magnitude, other.magnitude):
-            print(4)
-            return False
-
-        if self.magnitude == 0 and other.magnitude == 0:
-            return True
-
-        if not np.isclose(self.unit * other.unit, 1):
-            print(5)
-            return False
-
-        return True
+        return np.isclose(self.values, other.values).all()
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     @property
     def x(self):
+        """Get the x component of the vector
+
+        Returns:
+            float: x component of the vector
+        """
+
         return self[0]
 
     @x.setter
     def x(self, value):
+        """Get the x component of the vector
+
+        Args:
+            value (float): x component of the vector
+        """
+
         self[0] = value
 
     @property
     def y(self):
+        """Get the y component of the vector
+
+        Returns:
+            float: y component of the vector
+        """
+
         return self[1]
 
     @y.setter
     def y(self, value):
+        """Get the y component of the vector
+
+        Args:
+            value (float): y component of the vector
+        """
+
         self[1] = value
 
     @property
     def z(self):
+        """Get the z component of the vector
+
+        Returns:
+            float: z component of the vector
+        """
+
         return self[2]
 
     @z.setter
     def z(self, value):
+        """Get the z component of the vector
+
+        Args:
+            value (float): z component of the vector
+        """
+
         self[2] = value
 
     @property
@@ -128,6 +199,7 @@ class BaseVector(np.ndarray):
             krak.spatial.Vector:
                 New Vector object with magnitude of 1.
         """
+
         if self.magnitude:
             unit_vector = self / self.magnitude
         else:
@@ -147,6 +219,12 @@ class BaseVector(np.ndarray):
 
     @values.setter
     def values(self, value):
+        """Setter for underlying numpy array values
+
+        Args:
+            value (array-like):  array of length 2 or 3
+        """
+
         vector = self._validate_vector(value)
         for i, component in enumerate(vector):
             self[i] = component
@@ -164,6 +242,12 @@ class BaseVector(np.ndarray):
 
     @magnitude.setter
     def magnitude(self, value):
+        """Sets the vector magnitude by scaling it.
+
+        Args:
+            value (float): Desired vector magnitude
+        """
+
         self.values = self.scale(value)
 
     def scale(self, size):
@@ -184,6 +268,12 @@ class BaseVector(np.ndarray):
         return self.__class__(self.unit * size)
 
     def flip(self):
+        """Reverses the direction of the spatial quantity.
+        A new Vector object is returned.
+
+        Returns:
+            krak.Spatial.Vector: same vector but reversed
+        """
         return self.__class__(-self)
 
     @staticmethod
@@ -203,46 +293,6 @@ class BaseVector(np.ndarray):
         except ValueError:
             raise ValueError('Vector must be numeric')
 
-
-class Vector(BaseVector):
-    """Vector used to describe a direction without a positional reference.
-
-    Vector objects inherit from Vector objects and add new ways to
-    construct based on conventional geoscience nomenclature and conventions.
-    Here, trend and plunge are offered as arguments to help simplify the
-    vector description. An optional flip argument is also provided to reverse
-    the direction of the vector during intialization.
-
-    Attributes:
-        trend (float):
-            Azimuth of the horizontal component of the direction.
-        plunge (float):
-            Inclination of vector from the horizontal.
-
-    Todo:
-        Add support for unit quantities (i.e. degrees adn radians for
-        trend and plunge)
-
-    """
-
-    def __new__(cls, vector=None, trend=None, plunge=None):
-        """Creates a Vector object given either a vector array or trend
-        and plunge.
-
-        Args:
-            vector (array_like):
-                Numeric array of length 2 or 3 representing a vector quantity
-            trend (float):
-                Azimuth of the horizontal component of the direction (degrees).
-            plunge (float):
-                Inclination of vector from the horizontal (degrees).
-        """
-
-        if vector is None:
-            vector = cls._vector_from_trend_and_plunge(trend, plunge)
-
-        return super().__new__(cls, vector)
-
     @property
     def trend(self):
         """Azimuth of the horizontal component of the direction (degrees).
@@ -252,15 +302,22 @@ class Vector(BaseVector):
                 trend of the vector (degrees)
         """
 
-        if self.y == 0:
-            trend = 90 if self.x > 0 else 270
-        else:
-            trend = np.rad2deg(np.arctan(self.x / self.y))
+        trend = np.arctan2(self.x, self.y) * units.Unit('rad')
+        trend = trend if trend > 0 else trend + 360 * units.Unit('deg')
 
-        return trend if trend > 0 else trend + 180
+        return trend.to(config.settings.units.angle)
 
     @trend.setter
     def trend(self, trend):
+        """sets the trend of the vector in place. The current plunge of the
+        vector is maintained.
+
+        Args:
+            trend (float):
+                azimuth of the vector trend. krak.Units are supported, and
+                will revert to default units in krak.settings if not specified.
+        """
+
         self.values = self._vector_from_trend_and_plunge(trend, self.plunge)
 
     @property
@@ -272,10 +329,21 @@ class Vector(BaseVector):
                 plunge of the vector (degrees)
         """
 
-        return np.rad2deg(-np.arcsin(self[-1] / np.linalg.norm(self)))
+        plunge = -np.arcsin(self.z / self.magnitude) * units.Unit('rad')
+
+        return plunge.to(config.settings.units.angle)
 
     @plunge.setter
     def plunge(self, plunge):
+        """sets the plunge of the vector in place. The current trend of the
+        vector is maintained.
+
+        Args:
+            plunge (float):
+                Angle of vector plunge. krak.Units are supported, and
+                will revert to default units in krak.settings if not specified.
+        """
+
         self.values = self._vector_from_trend_and_plunge(self.trend, plunge)
 
     def project(self, destination):
@@ -319,7 +387,7 @@ class Vector(BaseVector):
             0 * units.Unit('deg'))
         plunge = (
             properties.Plunge(plunge).quantity if plunge is not None else
-            -90 * units.Unit('deg'))
+            0 * units.Unit('deg'))
 
         return [
             np.sin(trend).magnitude * np.cos(plunge).magnitude,
@@ -333,47 +401,111 @@ class Vector(BaseVector):
             destination.magnitude)
 
 
-class Orientation(BaseVector):
+class Orientation(Vector):
     def __new__(
             cls, normal=None, pole=None, strike=None, dip=None,
             dip_direction=None, plunge=None, trend=None):
 
-        assert (
-            (normal is not None or pole is not None) or
-            (strike is not None and dip is not None) or
-            (dip is not None and dip_direction is not None)
-            (trend is not None and plunge is not None)
-        )
+        if normal is not None:
+            vector = normal
+        elif pole is not None:
+            vector = pole
+        elif strike is not None and dip is not None:
+            vector = cls._normal_from_strike_and_dip(strike, dip)
+        elif dip is not None and dip_direction is not None:
+            vector = cls._normal_from_dip_and_direction(dip, dip_direction)
+        elif strike is not None:
+            vector = cls._normal_from_strike_and_dip(strike, None)
+        elif dip is not None:
+            vector = cls._normal_from_strike_and_dip(None, dip)
+        elif dip_direction is not None:
+            vector = cls._normal_from_dip_and_direction(None, dip_direction)
+        else:
+            vector = (0, 0, -1)
 
-        if pole is not None:
-            normal = pole
-        if normal is None:
-            if strike is not None:
-                trend = strike - 90
-            if dip is not None:
-                plunge = 90 - dip
-            if dip_direction is not None:
-                trend = dip_direction + 180
+        return super().__new__(cls, vector=vector)
 
-            normal = Vector(trend=trend, plunge=plunge)
+    @classmethod
+    def _normal_from_strike_and_dip(cls, strike, dip):
+        deg = units.Unit('deg')
+        strike = (
+            properties.Strike(strike).quantity if strike is not None else
+            90 * deg)
+        dip = (
+            properties.Dip(dip).quantity if dip is not None else
+            0 * deg)
 
-        return super().__new__(cls, vector=normal)
+        trend = strike - 90 * deg
+        plunge = 90 * deg - dip
+
+        trend = trend if trend > 0 else trend + 360 * deg
+        return cls._vector_from_trend_and_plunge(trend, plunge)
+
+    @classmethod
+    def _normal_from_dip_and_direction(cls, dip, dip_direction):
+        deg = units.Unit('deg')
+
+        dip = (
+            properties.Dip(dip).quantity if dip is not None else
+            0 * deg)
+        dip_direction = (
+            properties.DipDirection(dip_direction).quantity
+            if dip_direction is not None else 0 * deg)
+
+        trend = dip_direction - 180 * deg
+        plunge = 90 * deg - dip
+
+        trend = trend if trend > 0 else trend + 360 * deg
+        return cls._vector_from_trend_and_plunge(trend, plunge)
 
     @property
     def strike(self):
-        return self.trend + 90 if self.trend < 270 else self.trend - 270
+        deg = units.Unit('deg')
+        return (
+            self.trend + 90 * deg if self.trend < 270 * deg else
+            self.trend - 270 * deg
+        )
+
+    @strike.setter
+    def strike(self, strike):
+        self.values = self._normal_from_strike_and_dip(strike, self.dip)
 
     @property
     def dip(self):
-        return 90 - self.plunge
+        return 90 * units.Unit('deg') - self.plunge
+
+    @dip.setter
+    def dip(self, dip):
+        self.values = self._normal_from_strike_and_dip(self.strike, dip)
 
     @property
     def dip_direction(self):
-        return self.trend + 180 if self.trend < 180 else self.trend - 180
+        deg = units.Unit('deg')
+        return (
+            self.trend + 180 * deg if self.trend < 180 * deg else
+            self.trend - 180 * deg
+        )
+
+    @dip_direction.setter
+    def dip_direction(self, dip_direction):
+        self.values = self._normal_from_dip_and_direction(
+            self.dip, dip_direction)
 
     @property
     def normal(self):
         return Vector(self)
+
+    @normal.setter
+    def normal(self, normal):
+        self.values = normal
+
+    @property
+    def pole(self):
+        return self.normal
+
+    @pole.setter
+    def pole(self, pole):
+        self.normal = pole
 
 
 class Line:
