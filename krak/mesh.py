@@ -227,7 +227,7 @@ class Mesh(MeshFilters, ABC):
             scalars = f'bc:{boundary_condition}'
         else:
             scalars = None
-        plotter = viewer.Window().plotter
+        plotter = viewer.Window()
         plotter.add_mesh(self.pyvista, scalars=scalars, **kwargs)
 
     def save(self, file_name):

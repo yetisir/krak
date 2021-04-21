@@ -29,7 +29,7 @@ def degrees():
 
 
 def test_vector_construction_default():
-    assert spatial.Vector() == spatial.Vector([0, 1, 0])
+    assert spatial.Vector() == spatial.Vector([0, 0, 1])
 
 
 def test_vector_construction_list():
@@ -125,7 +125,7 @@ def test_vector_plunge_property():
 
 
 def test_orientation_construction_default():
-    assert spatial.Orientation() == spatial.Orientation([0, 0, -1])
+    assert spatial.Orientation() == spatial.Orientation([0, 0, 1])
 
 
 def test_orientation_construction_normal():
@@ -181,11 +181,48 @@ def test_orientation_normal_property():
     orientation = spatial.Orientation(dip=34, dip_direction=55)
 
     orientation.normal = reference_vector_3D()
-    assert np.isclose(orientation.normal, vector_3D()).all()
+    assert orientation.normal == vector_3D()
 
 
 def test_orientation_pole_property():
     orientation = spatial.Orientation(dip=34, dip_direction=55)
 
     orientation.pole = reference_vector_3D()
-    assert np.isclose(orientation.pole, vector_3D()).all()
+    assert orientation.pole == vector_3D()
+
+
+def test_orientation_projection():
+    vector = vector_3D()
+
+    assert vector.project(vector) == vector
+    assert (
+        vector.project(spatial.Orientation([5.6, 6.7, 7.8])) ==
+        spatial.Vector([-0.78730761, -0.0776716,  0.6319644])
+    )
+
+
+def test_line_constructor():
+    line = spatial.Line(reference_vector_3D(), origin=reference_vector_3D())
+
+    assert line.direction == vector_3D()
+    assert line.origin == vector_3D()
+
+
+def test_line_projection():
+    line = spatial.Line(reference_vector_3D(), origin=reference_vector_3D())
+
+    projection = line.project([5.6, 6.7, 7.8])
+
+    assert isinstance(projection, spatial.Line)
+    assert projection.direction == spatial.Vector(
+        (1.98730761, 2.3776716, 2.7680356))
+    assert projection.origin == spatial.Vector(
+        (1.98730761, 2.3776716, 2.7680356))
+    assert line.project(reference_vector_3D()) == line
+
+
+def test_line_flip():
+    line = spatial.Line(reference_vector_3D(), origin=reference_vector_3D())
+    flipped = line.flip()
+    assert flipped.direction == vector_3D().flip()
+    assert flipped.origin == vector_3D()

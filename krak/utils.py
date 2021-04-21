@@ -83,6 +83,14 @@ def get_all_subclasses(cls):
     return all_subclasses
 
 
+def ipython():
+    try:
+        get_ipython()  # noqa
+        return True
+    except NameError:
+        return False
+
+
 class Singleton(type):
     _instances = {}
 

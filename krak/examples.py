@@ -26,10 +26,6 @@ def faults():
 def saddle():
     return mesh.load_mesh(examples.download_saddle_surface())
 
-# examples.download_faults
-
-# examples.download_saddle_surface
-
 # examples.download_tetra_dc_mesh
 
 # examples.load_channels()
@@ -39,6 +35,7 @@ def saddle():
 # examples.download_sky_box_nz
 
 # examples.download_structured_grid
+
 # examples.download_structured_grid_two
 
 # examples.download_unstructured_grid
